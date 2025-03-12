@@ -2,8 +2,10 @@ from graph_io import load_graph
 from collections import defaultdict
 import sys
 import time
+from line_profiler_pycharm import profile
 
 
+@profile
 def basic_colorref(path: str) -> list:
     with open(path, 'r') as f:
         data = load_graph(f, read_list=True)
@@ -106,12 +108,13 @@ def basic_colorref(path: str) -> list:
 
 if __name__ == "__main__":
     startTime = time.time()
-    basic_colorref(sys.argv[1])
+    basic_colorref("Graphs/SampleGraphsBasicColorRefinement/colorref_smallexample_4_7.grl")
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")
 
 
+@profile
 def colorrefPreColored(graphs):
     n_graphs = len(graphs)
     initially_stable = {}
