@@ -111,3 +111,59 @@ def basic_colorref(path: str) -> list:
     result.sort(key=lambda x: x[0][0] if x[0] else -1)
 
     return result
+
+def colorrefPreColored(graphs):
+    n_graphs = len(graphs)
+    initially_stable = {}
+
+    for g_idx, G in enumerate(graphs):
+        freq_map = defaultdict(int)
+        for v in G.vertices:
+            freq_map[v.label] += 1
+
+        sorted_freq = tuple(sorted(freq_map.values()))
+
+        neighbor_signatures = set(
+            tuple(sorted(n.label for n in v.neighbours)) for v in G.vertices
+        )
+
+        initially_stable[g_idx] = (len(neighbor_signatures) == 1)
+
+    stable_iteration = {g_idx: None for g_idx in range(n_graphs)}
+    previous_freq_maps = [{} for _ in range(n_graphs)]
+
+    iteration = 0
+    while True:
+        iteration += 1
+
+        signature_map = {}
+        for G in graphs:
+            for v in G.vertices:
+                neighbor_colors = sorted(n.label for n in v.neighbours)
+                signature_map[v] = (v.label, tuple(neighbor_colors))
+
+        new_labels = {}
+        next_color = 0
+        for v in signature_map:
+            sig = signature_map[v]
+            if sig not in new_labels:
+                new_labels[sig] = next_color
+                next_color += 1
+            v.label = new_labels[sig]
+
+        for g_idx, G in enumerate(graphs):
+
+            freq_map = defaultdict(int)
+            for v in G.vertices:
+                freq_map[v.label] += 1
+
+            sorted_freq = tuple(sorted(freq_map.values()))
+
+            if sorted_freq == previous_freq_maps[g_idx] and stable_iteration[g_idx] is None:
+                stable_iteration[g_idx] = iteration
+
+            previous_freq_maps[g_idx] = sorted_freq
+
+        if all(stable_iteration[g] is not None for g in range(n_graphs)):
+            break
+    return graphs

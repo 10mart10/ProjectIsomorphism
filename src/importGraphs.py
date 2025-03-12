@@ -1,6 +1,6 @@
 import time
 from graph_io import *
-from colorrefMart import *
+from colorref  import *
 
 
 # main function, does all the steps necessary for the project
@@ -8,7 +8,7 @@ def main(path: str):
     if "grl" not in path:
         # opens singular graph and calculate the amount of automorphisms
         with open(path) as f:
-            G = load_graph(f, read_list=True)
+            G = load_graph(f)
             return calculateAut(G)
     else:
         with open(path) as f:
@@ -28,10 +28,27 @@ def main(path: str):
 # calculates the amount of automorphisms for a graph
 def calculateAut(graph: Graph):
     setBase(graph)
-    # TODO call modified color refinement
+    graph = colorrefPreColored([graph])
+    if len(set([v.label for v in graph.vertices])) == len(graph.vertices):
+        return 1
+    else:
+        return brancher(graph)
 
 
 # sets the colour of all vertices to it's base value
 def setBase(graph: Graph):
     for vector in graph.vertices:
-        vector.colornum = 0
+        vector.label = 0
+
+
+def brancher(graph: Graph):
+    # TODO start branching
+    pass
+
+
+def countIsomorphism(graph: Graph):
+    # TODO count the amount of isomorphisms
+    pass
+
+
+print(main("Graphs/TestGraphs/basicAut1.gr"))
