@@ -28,7 +28,7 @@ class Vertex(object):
     except for `__str__`.
     """
 
-    def __init__(self, graph: "Graph", label=None):
+    def __init__(self, graph: "Graph", label=None, identifier=None):
         """
         Creates a vertex, part of `graph`, with optional label `label`.
         (Labels of different vertices may be chosen the same; this does
@@ -42,6 +42,7 @@ class Vertex(object):
 
         self._graph = graph
         self.label = label
+        self.identifier = identifier
         self._incidence = {}
 
     def __repr__(self):

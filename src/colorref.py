@@ -11,8 +11,11 @@ def basic_colorref(path: str) -> list:
     n_graphs = len(graphs)
 
     for G in graphs:
+        i = 0
         for v in G.vertices:
             v.label = len(v.neighbours)
+            v.identifier = i
+            i += 1
 
     initially_stable = {}
 
