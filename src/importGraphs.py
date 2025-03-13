@@ -31,7 +31,7 @@ def calculateAut(graph: Graph):
     if len(set([v.label for v in graph[0].vertices])) == len(graph[0].vertices):
         return 1
     else:
-        return brancher(graph)
+        return brancher(graph, 0)
 
 
 # sets the colour of all vertices to it's base value
