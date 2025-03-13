@@ -1,4 +1,4 @@
-from importGraphs import *
+from importGraphs import load_graph
 from collections import defaultdict
 import time
 from line_profiler import profile
@@ -91,14 +91,14 @@ def basic_colorref(path: str) -> list:
     eq_classes = defaultdict(list)
 
     for g_idx, signature in eq_class_signatures.items():
-        eq_classes[signature].append(graphs[g_idx])
+        eq_classes[signature].append(g_idx)
 
     result = []
     for key, idx_list in eq_classes.items():
-        # sorted_idx = sorted(idx_list)
-        result.append((idx_list, len(list(key[0])), key[2], key[3]))
+        sorted_idx = sorted(idx_list)
+        result.append((sorted_idx, list(key[0]), key[2], key[3]))
 
-    # result.sort(key=lambda x: x[0][0] if x[0] else -1)
+    result.sort(key=lambda x: x[0][0] if x[0] else -1)
 
     print(result)
 
@@ -161,11 +161,15 @@ def colorrefPreColored(graphs):
     return graphs
 
 
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
+        print("Usage: python colorref.py <path_to_graph_file>")
         sys.exit(1)
-
+    
+    # Get the file path from command-line arguments
     file_path = sys.argv[1]
     
-
+    # Call the function with the file path
     basic_colorref(file_path)

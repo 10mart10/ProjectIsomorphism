@@ -16,9 +16,10 @@ def main(path: str):
             graphs = load_graph(f, read_list=True)[0]
         # get basic color refinement results
         refinedGraphs = basic_colorref(path)
+        print(refinedGraphs)
         results = []
         for graphs in refinedGraphs:
-            if graphs[4] or len(graphs[0]) <= 1:
+            if graphs[3] or len(graphs[0]) <= 1:
                 results.append(graphs[0])
             else:
                 results += checkIsomorphism(graphs[0])
