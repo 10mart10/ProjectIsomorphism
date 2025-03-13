@@ -1,6 +1,5 @@
-from graph_io import load_graph
+from importGraphs import *
 from collections import defaultdict
-import sys
 import time
 from line_profiler_pycharm import profile
 
@@ -67,6 +66,7 @@ def basic_colorref(path: str) -> list:
         if all(stable_iteration[g] is not None for g in range(n_graphs)):
             break
 
+    final_info = []
     eq_class_signatures = {}
 
     for g_idx, G in enumerate(graphs):
@@ -104,14 +104,6 @@ def basic_colorref(path: str) -> list:
     print(result)
 
     return result
-
-
-if __name__ == "__main__":
-    startTime = time.time()
-    basic_colorref("Graphs/SampleGraphsBasicColorRefinement/colorref_smallexample_4_7.grl")
-    endTime = time.time()
-    totalTime = endTime - startTime
-    print(f"Time was {totalTime} seconds")
 
 
 @profile

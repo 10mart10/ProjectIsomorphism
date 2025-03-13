@@ -1,6 +1,6 @@
 import time
 from graph_io import *
-from colorref  import *
+from colorref import *
 
 
 # main function, does all the steps necessary for the project
@@ -15,7 +15,6 @@ def main(path: str):
             graphs = load_graph(f, read_list=True)[0]
         # get basic color refinement results
         results = basic_colorref(path)
-        # TODO reiterate over non discrete groups
         if "Aut" in path:
             # if the file is an Aut file, calculate the automorphisms
             autResults = []
@@ -29,7 +28,7 @@ def main(path: str):
 def calculateAut(graph: Graph):
     setBase(graph)
     graph = colorrefPreColored([graph])
-    if len(set([v.label for v in graph.vertices])) == len(graph.vertices):
+    if len(set([v.label for v in graph[0].vertices])) == len(graph[0].vertices):
         return 1
     else:
         return brancher(graph)
@@ -41,14 +40,18 @@ def setBase(graph: Graph):
         vector.label = 0
 
 
-def brancher(graph: Graph):
+def brancher(graph, checkIsomorphism):
     # TODO start branching
     pass
 
 
-def countIsomorphism(graph: Graph):
+def countIsomorphism(graph, checkIsomorphism):
     # TODO count the amount of isomorphisms
     pass
 
-
-print(main("Graphs/TestGraphs/basicAut1.gr"))
+if __name__ == "__main__":
+    startTime = time.time()
+    print(main("Graphs/TestGraphs/basicAut1.gr"))
+    endTime = time.time()
+    totalTime = endTime - startTime
+    print(f"Time was {totalTime} seconds")
