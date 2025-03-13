@@ -82,7 +82,7 @@ def countIsomorphism(graphG, graphH, checkIsomorphism):
 
     # balanced or not
     for colorOfG, colorOfH in colorsDict.values():
-        # change this to colorDict
+        # TODO: change this to colorDict
         if len(colorOfG.vertices) != len(graphG.vertices):
             return 0
 
