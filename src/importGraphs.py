@@ -47,33 +47,16 @@ def setBase(graph: Graph):
         vector.label = 0
 
 
-def brancher(graph, checkIsomorphism):
-    # TODO start branching
-    pass
+def brancher(graph, checkIsomorphism, colorsDict=None):
+    if len(graph) == 1:
+        graphG = graph[0]
+        graphH = graphG
+    else:
+        graphG = graph[0]
+        graphH = graph[1]
 
-
-def countIsomorphism(graphG, graphH):
-    colorsDict = {}
-    counter = 0
-    coloredGraphs = colorrefPreColored([graphG, graphH])
-    for graph in coloredGraphs:
-        for vertex in graph.vertices:
-            color = vertex.label
-            if color not in colorsDict:
-                colorsDict[color] = [[], []]
-            if vertex in graphG.vertices:
-                colorsDict[color][0].append(vertex)
-            else:
-                colorsDict[color][1].append(vertex)
-
-    # balanced or not
-    for colorOfG, colorOfH in colorsDict.values():
-        if len(colorOfG.vertices) != len(graphG.vertices):
-            return 0
-
-    # bijection or not
-    if all(len(classG) == 1 for classG, classH in colorsDict.values()):
-        return 1
+    if colorsDict is None:
+        colorsDict = calculateColorDict([graphG, graphH])
 
     # choosing the color class with C>=4
     colorClass = None
@@ -85,9 +68,32 @@ def countIsomorphism(graphG, graphH):
     if not colorClass:
         return 0
 
-    counter += brancher([graphG, graphH], 0)
 
-    return counter
+def countIsomorphism(graphG, graphH):
+    coloredGraphs = colorrefPreColored([graphG, graphH])
+    colorsDict = calculateColorDict(coloredGraphs)
+
+    # balanced or not
+    for colorOfG, colorOfH in colorsDict.values():
+        if len(colorOfG.vertices) != len(graphG.vertices):
+            return 0
+
+    # bijection or not
+    if all(len(classG) == 1 for classG, classH in colorsDict.values()):
+        return 1
+
+    return brancher([graphG, graphH], checkIsomorphism, colorsDict)
+
+
+def calculateColorDict(coloredGraphs):
+    colorsDict = {}
+    for graph in coloredGraphs:
+        for vertex in graph.vertices:
+            color = vertex.label
+            if color not in colorsDict:
+                colorsDict[color] = [[], []]
+            colorsDict[color].append(vertex)
+    return colorsDict
 
 
 def checkIsomorphism(graphs: [Graph]):
