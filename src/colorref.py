@@ -1,8 +1,7 @@
 from importGraphs import *
 from collections import defaultdict
 import time
-from line_profiler_pycharm import profile
-
+from line_profiler import profile
 
 @profile
 def basic_colorref(path: str) -> list:
@@ -160,3 +159,13 @@ def colorrefPreColored(graphs):
         if all(stable_iteration[g] is not None for g in range(n_graphs)):
             break
     return graphs
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        sys.exit(1)
+
+    file_path = sys.argv[1]
+    
+
+    basic_colorref(file_path)
