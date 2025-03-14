@@ -29,7 +29,8 @@ def main(path: str):
             # if the file is an Aut file, calculate the automorphisms
             autResults = []
             for result in results:
-                autResults.append((graphs[0], calculateAut(graphs[result[0][0]])))
+                autResults.append((sorted([graph.identifier for graph in result]),
+                                   calculateAut(result[0])))
             return autResults
         adIdentifier = []
         for result in results:
@@ -126,7 +127,7 @@ def checkIsomorphism(graphs: [Graph]):
                 continue
             if graph1 == graph2:
                 continue
-            if brancher([graph1, graph2], 1):
+            if brancher([graphCopy(graph1), graphCopy(graph2)], 1):
                 correctIsomorphism[graph1.identifier].add(graph2)
                 correctIsomorphism[graph2.identifier].add(graph1)
                 for graph3 in correctIsomorphism[graph2.identifier]:
@@ -169,10 +170,9 @@ def graphCopy(graph: Graph):
     return newGraph
 
 
-
 if __name__ == "__main__":
     startTime = time.time()
-    print(main("Graphs/TestGraphs/basicGI2.grl"))
+    print(main("Graphs/TestGraphs/basicGIAut1.grl"))
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")
