@@ -10,9 +10,11 @@ def basic_colorref(path: str) -> list:
         data = load_graph(f, read_list=True)
     graphs = data[0]
     n_graphs = len(graphs)
-
+    j = 0
     for G in graphs:
         i = 0
+        G.identifier = j
+        j += 1
         for v in G.vertices:
             v.label = len(v.neighbours)
             v.identifier = i

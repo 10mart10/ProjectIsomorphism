@@ -8,7 +8,6 @@ from src.colorref import *
 
 
 # main function, does all the steps necessary for the project
-@profile
 def main(path: str):
     if "grl" not in path:
         # opens singular graph and calculate the amount of automorphisms
@@ -32,7 +31,10 @@ def main(path: str):
             for result in results:
                 autResults.append((graphs[0], calculateAut(graphs[result[0][0]])))
             return autResults
-        return graphs
+        adIdentifier = []
+        for result in results:
+            adIdentifier.append(sorted([graph.identifier for graph in result]))
+        return adIdentifier
 
 
 # calculates the amount of automorphisms for a graph
@@ -70,12 +72,16 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
         if vector in graphs[0].vertices:
             vector.label = len(colorsDict)
             break
+    counter = 0
     for vector in colorsDict[colorClass]:
         if not vector in graphs[0].vertices:
             graphG = graphCopy(graphs[0])
             graphH = graphCopy(graphs[1])
             graphH.vertices[vector.identifier].label = len(colorsDict)
-            countIsomorphism(graphG, graphH, checkIsomorphism)
+            counter += countIsomorphism(graphG, graphH, checkIsomorphism)
+            if checkIsomorphism == 1 and (counter > 0 or counter):
+                return True
+    return counter
 
 
 def countIsomorphism(graphG, graphH, checkIsomorphism):
@@ -106,37 +112,48 @@ def calculateColorDict(coloredGraphs):
 def checkIsomorphism(graphs: [Graph]):
     if len(graphs) == 2:
         if brancher(graphs, 1):
-            return graphs
+            return [graphs]
         return [[graphs[0]], [graphs[1]]]
     falseIsomorphism = {}
     correctIsomorphism = {}
     for graph in graphs:
-        falseIsomorphism[graph] = set()
-        correctIsomorphism[graph] = set()
+        falseIsomorphism[graph.identifier] = set()
+        correctIsomorphism[graph.identifier] = set()
 
     for graph1 in graphs:
-        if len(correctIsomorphism[graph1]) > 0:
-            continue
         for graph2 in graphs:
-            if graph2 in falseIsomorphism[graph1]:
-                break
+            if graph1 in correctIsomorphism[graph2.identifier] or graph1 in falseIsomorphism[graph2.identifier]:
+                continue
+            if graph1 == graph2:
+                continue
             if brancher([graph1, graph2], 1):
-                correctIsomorphism[graph1].add(graph2)
-                correctIsomorphism[graph2].add(graph1)
-                for graph3 in correctIsomorphism[graph2]:
-                    correctIsomorphism[graph3].add(graph1)
-                    correctIsomorphism[graph1].add(graph3)
+                correctIsomorphism[graph1.identifier].add(graph2)
+                correctIsomorphism[graph2.identifier].add(graph1)
+                for graph3 in correctIsomorphism[graph2.identifier]:
+                    correctIsomorphism[graph3.identifier].add(graph1)
+                    correctIsomorphism[graph1.identifier].add(graph3)
+                for graph3 in correctIsomorphism[graph1.identifier]:
+                    correctIsomorphism[graph3.identifier].add(graph2)
+                    correctIsomorphism[graph2.identifier].add(graph3)
             else:
-                falseIsomorphism[graph1].add(graph2)
-                falseIsomorphism[graph2].add(graph1)
-                for graph3 in correctIsomorphism[graph2]:
-                    falseIsomorphism[graph3].add(graph1)
-                    falseIsomorphism[graph1].add(graph3)
-    result = set()
+                falseIsomorphism[graph1.identifier].add(graph2)
+                falseIsomorphism[graph2.identifier].add(graph1)
+                for graph3 in correctIsomorphism[graph2.identifier]:
+                    falseIsomorphism[graph3.identifier].add(graph1)
+                    falseIsomorphism[graph1.identifier].add(graph3)
+                for graph3 in correctIsomorphism[graph1.identifier]:
+                    falseIsomorphism[graph3.identifier].add(graph2)
+                    falseIsomorphism[graph2.identifier].add(graph3)
+    tempResult = []
     for graph in graphs:
-        correctIsomorphism[graph].add(graph)
-        result.add(correctIsomorphism[graph])
-    return [result]
+        correctIsomorphism[graph.identifier].add(graph)
+        tempResult.append(list(correctIsomorphism[graph.identifier]))
+    result = []
+    for graphs in tempResult:
+        graphs.sort(key=lambda x: x.identifier)
+        if graphs not in result:
+            result.append(graphs)
+    return result
 
 
 def graphCopy(graph: Graph):
@@ -155,7 +172,7 @@ def graphCopy(graph: Graph):
 
 if __name__ == "__main__":
     startTime = time.time()
-    print(main("Graphs/TestGraphs/basicAut1.gr"))
+    print(main("Graphs/TestGraphs/basicGI2.grl"))
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")
