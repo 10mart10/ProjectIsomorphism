@@ -1,12 +1,14 @@
 import time
 from graph_io import *
+from graph import *
 from colorref import *
 from copy import *
 
-from src.colorref import colorrefPreColored
+from src.colorref import *
 
 
 # main function, does all the steps necessary for the project
+@profile
 def main(path: str):
     if "grl" not in path:
         # opens singular graph and calculate the amount of automorphisms
@@ -20,7 +22,7 @@ def main(path: str):
         refinedGraphs = basic_colorref(path)
         results = []
         for graphs in refinedGraphs:
-            if graphs[4] or len(graphs[0]) <= 1:
+            if graphs[3] or len(graphs[0]) <= 1:
                 results.append(graphs[0])
             else:
                 results += checkIsomorphism(graphs[0])
@@ -54,7 +56,7 @@ def setBase(graph: Graph):
 
 def brancher(graphs, checkIsomorphism, colorsDict=None):
     if len(graphs) == 1:
-        graphs.append(deepcopy(graphs[0]))
+        graphs.append(graphCopy(graphs[0]))
     if colorsDict is None:
         colorsDict = calculateColorDict(graphs)
 
@@ -70,8 +72,8 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
             break
     for vector in colorsDict[colorClass]:
         if not vector in graphs[0].vertices:
-            graphG = deepcopy(graphs[0])
-            graphH = deepcopy(graphs[1])
+            graphG = graphCopy(graphs[0])
+            graphH = graphCopy(graphs[1])
             graphH.vertices[vector.identifier].label = len(colorsDict)
             countIsomorphism(graphG, graphH, checkIsomorphism)
 
@@ -79,15 +81,12 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
 def countIsomorphism(graphG, graphH, checkIsomorphism):
     coloredGraphs = colorrefPreColored([graphG, graphH])
     colorsDict = calculateColorDict(coloredGraphs)
-
+    graphGcolors = sorted([v.label for v in graphG.vertices])
     # balanced or not
-    for colorOfG, colorOfH in colorsDict.values():
-        # TODO: change this to colorDict
-        if len(colorOfG.vertices) != len(graphG.vertices):
-            return 0
-
+    if graphGcolors != sorted([v.label for v in graphH.vertices]):
+        return 0
     # bijection or not
-    if all(len(classG) == 1 for classG, classH in colorsDict.values()):
+    if len(set(graphGcolors)) == len(graphGcolors):
         return 1
 
     return brancher([graphG, graphH], checkIsomorphism, colorsDict)
@@ -138,6 +137,20 @@ def checkIsomorphism(graphs: [Graph]):
         correctIsomorphism[graph].add(graph)
         result.add(correctIsomorphism[graph])
     return [result]
+
+
+def graphCopy(graph: Graph):
+    newGraph = Graph(False, 0)
+    for vertex in graph.vertices:
+        v = Vertex(newGraph)
+        v.identifier = vertex.identifier
+        v.label = vertex.label
+        newGraph += v
+    for edge in graph.edges:
+        e = Edge(newGraph.vertices[edge.tail.identifier], newGraph.vertices[edge.head.identifier])
+        newGraph += e
+    return newGraph
+
 
 
 if __name__ == "__main__":
