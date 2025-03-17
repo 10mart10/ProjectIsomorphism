@@ -3,7 +3,6 @@ from graph_io import *
 from colorref import *
 from copy import *
 
-from src.colorref import colorrefPreColored
 
 
 # main function, does all the steps necessary for the project
