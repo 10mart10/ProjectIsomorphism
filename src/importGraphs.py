@@ -199,7 +199,7 @@ def graphCopy(graph: Graph):
 
 if __name__ == "__main__":
     startTime = time.time()
-    print(main("Graphs/TestGraphs/basicGIAut1.grl"))
+    print(main("Graphs/LastYearTests/torus24.grl"))
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")
