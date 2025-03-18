@@ -189,4 +189,3 @@ class permutation():
 			if self.P[i]!=other.P[i]:
 				return False
 		return True
-

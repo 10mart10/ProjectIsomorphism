@@ -3,8 +3,7 @@ from graph_io import *
 from graph import *
 from colorref import *
 from copy import *
-
-from src.colorref import *
+from line_profiler import profile
 
 
 # main function, does all the steps necessary for the project
@@ -20,7 +19,6 @@ def main(path: str):
             graphs = load_graph(f, read_list=True)[0]
         # get basic color refinement results
         refinedGraphs = basic_colorref(path)
-        print(refinedGraphs)
         results = []
         for graphs in refinedGraphs:
             if graphs[3] or len(graphs[0]) <= 1:
@@ -200,7 +198,7 @@ def graphCopy(graph: Graph):
 
 if __name__ == "__main__":
     startTime = time.time()
-    print(main("Graphs/TestGraphs/basicGIAut1.grl"))
+    print(main("Graphs/LastYearTests/torus24.grl"))
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")

@@ -154,4 +154,3 @@ def Stabilizer(generators,el):
 	for element <el>. The generating set has size less than n^2.
 	"""
 	return Reduce(SchreierGenerators(generators,el),0)
-
