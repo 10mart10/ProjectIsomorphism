@@ -16,8 +16,6 @@ def main(path: str):
             G = load_graph(f)
             return calculateAut(G)
     else:
-        with open(path) as f:
-            graphs = load_graph(f, read_list=True)[0]
         # get basic color refinement results
         refinedGraphs = basic_colorref(path)
         results = []
@@ -26,13 +24,13 @@ def main(path: str):
                 results.append(graphs[0])
             else:
                 results += checkIsomorphism(graphs[0])
-        if "Aut" in path:
+        # if "Aut" in path:
             # if the file is an Aut file, calculate the automorphisms
-            autResults = []
-            for result in results:
-                autResults.append((sorted([graph.identifier for graph in result]),
-                                   calculateAut(result[0])))
-            return autResults
+        autResults = []
+        for result in results:
+            autResults.append((sorted([graph.identifier for graph in result]),
+                               calculateAut(result[0])))
+        return autResults
         adIdentifier = []
         for result in results:
             adIdentifier.append(sorted([graph.identifier for graph in result]))
@@ -74,23 +72,36 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
         if len(vectors) >= 4:
             colorClass = color
             break
+    # Save the old colors
+    colors = []
+    for index in range(2):
+        colors.append([v.label for v in graphs[index].vertices])
     # set a random vector with color colorClass of graphG to the new color
     for vector in colorsDict[colorClass]:
         if vector in graphs[0].vertices:
             vector.label = len(colorsDict)
             break
+    # Save the basic color of graphG
+    colors.append([v.label for v in graphs[0].vertices])
     counter = 0
     # set all vectors with color colorClass of graphH to the new color and count the isomorphisms
     for vector in colorsDict[colorClass]:
         if not vector in graphs[0].vertices:
-            graphG = graphCopy(graphs[0])
-            graphH = graphCopy(graphs[1])
-            graphH.vertices[vector.identifier].label = len(colorsDict)
+            graphs[1].vertices[vector.identifier].label = len(colorsDict)
             # call countIsomorphism for the new colors
-            counter += countIsomorphism(graphG, graphH, checkIsomorphism)
+            counter += countIsomorphism(graphs[0], graphs[1], checkIsomorphism)
+            for vertice in range(len(graphs[1].vertices)):
+                graphs[1].vertices[vertice].label = colors[1][vertice]
             # if you're looking for isomorphisms and you find one, return True
             if checkIsomorphism == 1 and (counter > 0 or counter):
+                for vertice in range(len(graphs[0].vertices)):
+                    graphs[0].vertices[vertice].label = colors[0][vertice]
                 return True
+            # reset the colours
+            for vertice in range(len(graphs[1].vertices)):
+                graphs[0].vertices[vertice].label = colors[2][vertice]
+    for vertice in range(len(graphs[0].vertices)):
+        graphs[0].vertices[vertice].label = colors[0][vertice]
     return counter
 
 
@@ -149,7 +160,7 @@ def checkIsomorphism(graphs: [Graph]):
             if graph1 == graph2:
                 continue
             # check if the graphs are isomorphic
-            if brancher([graphCopy(graph1), graphCopy(graph2)], 1):
+            if brancher([graph1, graph2], 1):
                 # if they are, add them to the correct isomorphism dictionary and add all already known isomorphisms as well
                 correctIsomorphism[graph1.identifier].add(graph2)
                 correctIsomorphism[graph2.identifier].add(graph1)
@@ -199,7 +210,7 @@ def graphCopy(graph: Graph):
 
 if __name__ == "__main__":
     startTime = time.time()
-    print(main("Graphs/LastYearTests/torus24.grl"))
+    print(main("Graphs/SampleGraphSetBranching/cubes3.grl"))
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")
