@@ -3,8 +3,8 @@ from graph_io import *
 from graph import *
 from colorref import *
 from copy import *
-from line_profiler import profile
 
+from line_profiler import profile
 
 # main function, does all the steps necessary for the project
 @profile
@@ -59,6 +59,7 @@ def setBase(graph: Graph):
         i += 1
 
 
+rollback_stack = []
 # brancher function, does the branching for the calls count isomorphisms for all vectors of a certain color
 @profile
 def brancher(graphs, checkIsomorphism, colorsDict=None):
@@ -74,19 +75,36 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
             colorClass = color
             break
     # set a random vector with color colorClass of graphG to the new color
+    newColor = len(colorsDict)
+    graph0_vertices = set(graphs[0].vertices)
     for vector in colorsDict[colorClass]:
-        if vector in graphs[0].vertices:
-            vector.label = len(colorsDict)
+        if vector in graph0_vertices:
+            vector.label = newColor
             break
     counter = 0
     # set all vectors with color colorClass of graphH to the new color and count the isomorphisms
     for vector in colorsDict[colorClass]:
         if not vector in graphs[0].vertices:
-            graphG = graphCopy(graphs[0])
-            graphH = graphCopy(graphs[1])
-            graphH.vertices[vector.identifier].label = len(colorsDict)
+            # graphG = graphCopy(graphs[0])
+            # graphH = graphCopy(graphs[1])
+            vertices0 = graphs[0].vertices
+            vertices1 = graphs[1].vertices
+            rollback_stack.append([(v, v.label) for v in vertices0 + vertices1])
+
+            # changedVertices = []
+            # changedVertices.append((graphs[1].vertices[vector.identifier], vector.label))
+            # rollback_stack.append(changedVertices)
+            vertices1[vector.identifier].label = len(colorsDict)
+            
+            
             # call countIsomorphism for the new colors
-            counter += countIsomorphism(graphG, graphH, checkIsomorphism)
+            counter += countIsomorphism(graphs[0], graphs[1], checkIsomorphism)
+
+            # **Restore state from rollback stack**
+            previous_state = rollback_stack.pop()
+           
+            for vertex, prev_label in previous_state:
+                vertex.label = prev_label  # Restore original labels
             # if you're looking for isomorphisms and you find one, return True
             if checkIsomorphism == 1 and (counter > 0 or counter):
                 return True
@@ -141,6 +159,8 @@ def checkIsomorphism(graphs: [Graph]):
 
     # go over the graphs
     for graph1 in graphs:
+        graph1rollback = []
+        graph1rollback.append([(v, v.label) for v in graph1.vertices])
         for graph2 in graphs:
             # if the graphs are already checked, directly or indirectly, skip them
             if graph1 in correctIsomorphism[graph2.identifier] or graph1 in falseIsomorphism[graph2.identifier]:
@@ -148,7 +168,18 @@ def checkIsomorphism(graphs: [Graph]):
             if graph1 == graph2:
                 continue
             # check if the graphs are isomorphic
-            if brancher([graphCopy(graph1), graphCopy(graph2)], 1):
+
+            graph2rollback = []
+            graph2rollback.append([(v, v.label) for v in graph2.vertices])
+            if brancher([graph1, graph2], 1):
+                previous_state = graph1rollback[0]
+                for vertex, prev_label in previous_state:
+                    vertex.label = prev_label
+
+                previous_state = graph2rollback[0]
+                for vertex, prev_label in previous_state:
+                    vertex.label = prev_label
+
                 # if they are, add them to the correct isomorphism dictionary and add all already known isomorphisms as well
                 correctIsomorphism[graph1.identifier].add(graph2)
                 correctIsomorphism[graph2.identifier].add(graph1)
@@ -159,6 +190,13 @@ def checkIsomorphism(graphs: [Graph]):
                     correctIsomorphism[graph3.identifier].add(graph2)
                     correctIsomorphism[graph2.identifier].add(graph3)
             else:
+                previous_state = graph1rollback[0]
+                for vertex, prev_label in previous_state:
+                    vertex.label = prev_label
+
+                previous_state = graph2rollback[0]
+                for vertex, prev_label in previous_state:
+                    vertex.label = prev_label
                 # if they aren't, add them to the false isomorphism dictionary and add all already known isomorphisms as well
                 falseIsomorphism[graph1.identifier].add(graph2)
                 falseIsomorphism[graph2.identifier].add(graph1)
@@ -168,6 +206,7 @@ def checkIsomorphism(graphs: [Graph]):
                 for graph3 in correctIsomorphism[graph1.identifier]:
                     falseIsomorphism[graph3.identifier].add(graph2)
                     falseIsomorphism[graph2.identifier].add(graph3)
+        
     # create a list of the isomorphic classes in an unnecessarily complicated way
     tempResult = []
     for graph in graphs:
@@ -198,7 +237,7 @@ def graphCopy(graph: Graph):
 
 if __name__ == "__main__":
     startTime = time.time()
-    print(main("Graphs/LastYearTests/torus24.grl"))
+    print(main("Graphs/SampleGraphsFastColorRefinement/threepaths1280.gr"))
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")

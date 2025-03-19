@@ -4,6 +4,7 @@ import time
 from line_profiler import profile
 
 
+
 @profile
 def basic_colorref(path: str) -> list:
     with open(path, 'r') as f:
@@ -106,7 +107,7 @@ def basic_colorref(path: str) -> list:
 
     # result.sort(key=lambda x: x[0][0] if x[0] else -1)
 
-    print(result)
+  
 
     return result
 
