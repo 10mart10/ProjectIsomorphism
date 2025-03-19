@@ -1,4 +1,5 @@
 import time
+import os
 from graph_io import *
 from graph import *
 from colorref import *
@@ -196,10 +197,36 @@ def graphCopy(graph: Graph):
         newGraph.add_edge(e)
     return newGraph
 
+@profile
+def run_all(directory: str):
+    total = 0
+    file_num = 0
+    for filename in os.listdir(directory):
+        if filename.endswith(".grl"):
+            file_path = os.path.join(directory, filename)
+            start = time.time()
+            print(f"Processing {filename}...")
+            try:
+                result = main(file_path)
+                print(f"Result for {filename}: {result}")
+            except Exception as e:
+                print(f"Error {filename}: {e}")
+            end = time.time()
+            time_taken = end - start
+            total += time_taken
+            file_num += 1
+            print(f"Time taken for {filename}: {time_taken:.4f} seconds\n")
+
+    print(f"Total time: {total:.4f} seconds")
+    print(file_num)
+
 
 if __name__ == "__main__":
-    startTime = time.time()
-    print(main("Graphs/LastYearTests/torus24.grl"))
-    endTime = time.time()
-    totalTime = endTime - startTime
-    print(f"Time was {totalTime} seconds")
+    #startTime = time.time()
+    #print(main("Graphs/LastYearTests/basic01GI.grl"))
+    #endTime = time.time()
+    #totalTime = endTime - startTime
+    #print(f"Time was {totalTime} seconds")
+
+    directory_path = "Graphs/LastYearTests"
+    run_all(directory_path)
