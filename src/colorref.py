@@ -1,8 +1,6 @@
 from importGraphs import *
 from collections import defaultdict
-import time
 from line_profiler import profile
-
 
 
 @profile

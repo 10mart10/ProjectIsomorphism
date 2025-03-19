@@ -15,8 +15,6 @@ def main(path: str):
             G = load_graph(f)
             return calculateAut(G)
     else:
-        with open(path) as f:
-            graphs = load_graph(f, read_list=True)[0]
         # get basic color refinement results
         refinedGraphs = basic_colorref(path)
         results = []
@@ -25,19 +23,18 @@ def main(path: str):
                 results.append(graphs[0])
             else:
                 results += checkIsomorphism(graphs[0])
-        if "Aut" in path:
+        # if "Aut" in path:
             # if the file is an Aut file, calculate the automorphisms
-            autResults = []
-            for result in results:
-                autResults.append((sorted([graph.identifier for graph in result]),
-                                   calculateAut(result[0])))
-            return autResults
+        autResults = []
+        for result in results:
+            autResults.append((sorted([graph.identifier for graph in result]),
+                               calculateAut(result[0])))
+        return autResults
         adIdentifier = []
         for result in results:
             adIdentifier.append(sorted([graph.identifier for graph in result]))
         return adIdentifier
-
-
+    
 # calculates the amount of automorphisms for a graph
 @profile
 def calculateAut(graph: Graph):
@@ -81,6 +78,7 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
         if vector in graph0_vertices:
             vector.label = newColor
             break
+
     counter = 0
     # set all vectors with color colorClass of graphH to the new color and count the isomorphisms
     for vector in colorsDict[colorClass]:
@@ -237,7 +235,7 @@ def graphCopy(graph: Graph):
 
 if __name__ == "__main__":
     startTime = time.time()
-    print(main("Graphs/SampleGraphsFastColorRefinement/threepaths1280.gr"))
+    print(main("Graphs/TestGraphs/basicGI1.grl"))
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")
