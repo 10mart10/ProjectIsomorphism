@@ -98,7 +98,7 @@ def basic_colorref(path: str) -> list:
         eq_classes[signature].append(graphs[g_idx])
 
     result = [(idx_list, len(list(key[0])), key[2], key[3]) for key, idx_list in eq_classes.items()]
-    print(result)
+    # print(result)
 
     return result
 

@@ -3,10 +3,11 @@ import os
 from graph_io import *
 from graph import *
 from colorref import *
-from multiprocessing import Pool, Queue, Process, Value
+from multiprocessing import Pool, Process, Value
+import multiprocessing
 from src.colorref import *
 
-
+MAX_PROCESSES = 20
 # main function, does all the steps necessary for the project
 @profile
 def main(path: str):
@@ -16,8 +17,6 @@ def main(path: str):
             G = load_graph(f)
             return calculateAut(G)
     else:
-        with open(path) as f:
-            graphs = load_graph(f, read_list=True)[0]
         # get basic color refinement results
         refinedGraphs = basic_colorref(path)
         results = []
@@ -44,12 +43,14 @@ def main(path: str):
 def calculateAut(graph: Graph):
     setBase(graph)
     graphs = colorrefPreColored([graph])
+    counter = Value('i', 0)
     amountOfProcesses = Value('i', 0)
     # if the graph is discrete return 1
     if len(set([v.label for v in graphs[0].vertices])) == len(graphs[0].vertices):
         return 1
     else:
-        return brancher(graphs, 0, amountOfProcesses)
+        brancher(graphs, 0, counter, amountOfProcesses)
+        return counter.value
 
 
 # sets the colour of all vertices to it's base value
@@ -63,11 +64,15 @@ def setBase(graph: Graph):
 
 # brancher function, does the branching for the calls count isomorphisms for all vectors of a certain color
 @profile
-def brancher(graphs, checkIsomorphism, amountOfProcesses, colorsDict=None):
+def brancher(graphs, checkIsomorphism, counter=Value('i', 0), amountOfProcesses=None, colorsDict=None):
     if len(graphs) == 1:
         graphs.append(graphCopy(graphs[0]))
     if colorsDict is None:
         colorsDict = calculateColorDict(graphs)
+
+    colors = []
+    for index in range(2):
+        colors.append([v.label for v in graphs[index].vertices])
 
     # choosing the color class with C>=4
     colorClass = None
@@ -80,38 +85,42 @@ def brancher(graphs, checkIsomorphism, amountOfProcesses, colorsDict=None):
         if vector in graphs[0].vertices:
             vector.label = len(colorsDict)
             break
-    counter = 0
-    queue = Queue()
+    colors.append([v.label for v in graphs[0].vertices])
     processes = []
     # set all vectors with color colorClass of graphH to the new color and count the isomorphisms
     for vector in colorsDict[colorClass]:
         if not vector in graphs[0].vertices:
-            graphG = graphCopy(graphs[0])
-            graphH = graphCopy(graphs[1])
-            graphH.vertices[vector.identifier].label = len(colorsDict)
+            graphs[1].vertices[vector.identifier].label = len(colorsDict)
             # call countIsomorphism for the new colors
-            if amountOfProcesses.value < 10:
+            if amountOfProcesses is not None and amountOfProcesses.value < MAX_PROCESSES:
                 amountOfProcesses.value += 1
-                p = Process(target=queue.put, args=(countIsomorphism(graphG, graphH, checkIsomorphism, amountOfProcesses),))
+                p = Process(target=countIsomorphism, args=(graphs[0], graphs[1], checkIsomorphism, counter, amountOfProcesses,))
                 p.start()
                 processes.append(p)
             else:
-                counter += countIsomorphism(graphG, graphH, checkIsomorphism, amountOfProcesses)
+                countIsomorphism(graphs[0], graphs[1], checkIsomorphism, counter, amountOfProcesses)
+                for vertice in range(len(graphs[1].vertices)):
+                    graphs[0].vertices[vertice].label = colors[2][vertice]
+                    graphs[1].vertices[vertice].label = colors[1][vertice]
+            graphs[1].vertices[vector.identifier].label = colorClass
             # if you're looking for isomorphisms and you find one, return True
-            if checkIsomorphism == 1 and (counter > 0 or counter):
+            if checkIsomorphism == 1 and counter.value > 0:
+                for vertice in range(len(graphs[0].vertices)):
+                    graphs[0].vertices[vertice].label = colors[0][vertice]
                 return True
     for p in processes:
         p.join()
         amountOfProcesses.value -= 1
-    while not queue.empty():
-        counter += queue.get()
-    return counter
+    if multiprocessing.parent_process() is None:
+        for vertice in range(len(graphs[0].vertices)):
+            graphs[0].vertices[vertice].label = colors[0][vertice]
+    return False
 
 
 # countIsomorphism function, stops if it's unbalanced or bijection and increase by one if it's an isomorphism.
 # If not it calls brancher to look deeper
 @profile
-def countIsomorphism(graphG, graphH, checkIsomorphism, amountOfProcesses):
+def countIsomorphism(graphG, graphH, checkIsomorphism, counter, amountOfProcesses):
     coloredGraphs = colorrefPreColored([graphG, graphH])
     colorsDict = calculateColorDict(coloredGraphs)
     graphGcolors = sorted([v.label for v in graphG.vertices])
@@ -120,10 +129,11 @@ def countIsomorphism(graphG, graphH, checkIsomorphism, amountOfProcesses):
         return 0
     # bijection or not
     if len(set(graphGcolors)) == len(graphGcolors):
-        print("+1")
+        with counter.get_lock():
+            counter.value += 1
         return 1
 
-    return brancher([graphG, graphH], checkIsomorphism, amountOfProcesses, colorsDict=colorsDict)
+    return brancher([graphG, graphH], checkIsomorphism, counter=counter, amountOfProcesses=amountOfProcesses, colorsDict=colorsDict)
 
 
 # create a dictionary with the colors as keys and the vectors with that color as values
@@ -154,42 +164,41 @@ def checkIsomorphism(graphs: [Graph]):
     for graph in graphs:
         falseIsomorphism[graph.identifier] = set()
         correctIsomorphism[graph.identifier] = set()
-
     # go over the graphs
     for graph1 in graphs:
-        toPoolOver = []
+        processes = []
         for graph2 in graphs:
             # if the graphs are already checked, directly or indirectly, skip them
             if graph1 in correctIsomorphism[graph2.identifier] or graph1 in falseIsomorphism[graph2.identifier]:
                 continue
             if graph1 == graph2:
                 continue
-            toPoolOver.append((graph1, graph2))
-        if not toPoolOver:
-            continue
-        with Pool(processes=len(toPoolOver)) as pool:
-            results = pool.starmap(GIMultiProcessing, toPoolOver)
-            for i, result in enumerate(results):
-                graph2 = toPoolOver[i][1]
-                if result:
-                    correctIsomorphism[graph1.identifier].add(graph2)
-                    correctIsomorphism[graph2.identifier].add(graph1)
-                    for graph3 in correctIsomorphism[graph2.identifier]:
-                        correctIsomorphism[graph3.identifier].add(graph1)
-                        correctIsomorphism[graph1.identifier].add(graph3)
-                    for graph3 in correctIsomorphism[graph1.identifier]:
-                        correctIsomorphism[graph3.identifier].add(graph2)
-                        correctIsomorphism[graph2.identifier].add(graph3)
-                else:
-                    # if they aren't, add them to the false isomorphism dictionary and add all already known isomorphisms as well
-                    falseIsomorphism[graph1.identifier].add(graph2)
-                    falseIsomorphism[graph2.identifier].add(graph1)
-                    for graph3 in correctIsomorphism[graph2.identifier]:
-                        falseIsomorphism[graph3.identifier].add(graph1)
-                        falseIsomorphism[graph1.identifier].add(graph3)
-                    for graph3 in correctIsomorphism[graph1.identifier]:
-                        falseIsomorphism[graph3.identifier].add(graph2)
-                        falseIsomorphism[graph2.identifier].add(graph3)
+            result = Value('b', False)
+            p = Process(target=GIMultiProcessing, args=(graph1, graph2, result,))
+            p.start()
+            processes.append((p, result, graph2))
+        for p, result, graph2 in processes:
+            p.join()
+            result = result.value
+            if result:
+                correctIsomorphism[graph1.identifier].add(graph2)
+                correctIsomorphism[graph2.identifier].add(graph1)
+                for graph3 in correctIsomorphism[graph2.identifier]:
+                    correctIsomorphism[graph3.identifier].add(graph1)
+                    correctIsomorphism[graph1.identifier].add(graph3)
+                for graph3 in correctIsomorphism[graph1.identifier]:
+                    correctIsomorphism[graph3.identifier].add(graph2)
+                    correctIsomorphism[graph2.identifier].add(graph3)
+            else:
+                # if they aren't, add them to the false isomorphism dictionary and add all already known isomorphisms as well
+                falseIsomorphism[graph1.identifier].add(graph2)
+                falseIsomorphism[graph2.identifier].add(graph1)
+                for graph3 in correctIsomorphism[graph2.identifier]:
+                    falseIsomorphism[graph3.identifier].add(graph1)
+                    falseIsomorphism[graph1.identifier].add(graph3)
+                for graph3 in correctIsomorphism[graph1.identifier]:
+                    falseIsomorphism[graph3.identifier].add(graph2)
+                    falseIsomorphism[graph2.identifier].add(graph3)
     # create a list of the isomorphic classes in an unnecessarily complicated way
     tempResult = []
     for graph in graphs:
@@ -203,9 +212,10 @@ def checkIsomorphism(graphs: [Graph]):
     return result
 
 
-def GIMultiProcessing(graph1, graph2,):
+def GIMultiProcessing(graph1, graph2, result):
     # check if the graphs are isomorphic
-    return graph2, brancher([graphCopy(graph1), graphCopy(graph2)], 1)
+    result.value = brancher([graph1, graph2], 1)
+    return
 
 
 
@@ -229,7 +239,7 @@ def run_all(directory: str):
     total = 0
     file_num = 0
     for filename in os.listdir(directory):
-        if filename.endswith(".grl"):
+        if filename.endswith(".grl") or filename.endswith(".gr"):
             file_path = os.path.join(directory, filename)
             start = time.time()
             print(f"Processing {filename}...")
@@ -249,11 +259,11 @@ def run_all(directory: str):
 
 
 if __name__ == "__main__":
-    startTime = time.time()
-    print(main("Graphs/TestGraphs/basicAut1.gr"))
-    endTime = time.time()
-    totalTime = endTime - startTime
-    print(f"Time was {totalTime} seconds")
+    # startTime = time.time()
+    # print(main("Graphs/TestGraphs/basicGI3.grl"))
+    # endTime = time.time()
+    # totalTime = endTime - startTime
+    # print(f"Time was {totalTime} seconds")
 
-    #directory_path = "Graphs/LastYearTests"
-    #run_all(directory_path)
+    directory_path = "Graphs/TestGraphs"
+    run_all(directory_path)
