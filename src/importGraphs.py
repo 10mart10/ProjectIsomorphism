@@ -223,7 +223,7 @@ def run_all(directory: str):
 
 if __name__ == "__main__":
     startTime = time.time()
-    print(main("Graphs/LastYearTests/basic01GI.grl"))
+    print(main("Graphs/CustomGraphs/BranchingColorTest.gr"))
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")
