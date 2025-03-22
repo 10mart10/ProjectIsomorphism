@@ -17,8 +17,6 @@ def main(path: str):
             G = load_graph(f)
             return calculateAut(G)
     else:
-        with open(path) as f:
-            graphs = load_graph(f, read_list=True)[0]
         # get basic color refinement results
         refinedGraphs = basic_colorref(path)
         results = []
@@ -69,6 +67,11 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
     if colorsDict is None:
         colorsDict = calculateColorDict(graphs)
 
+    # Save the old colors
+    colors = []
+    for index in range(2):
+        colors.append([v.label for v in graphs[index].vertices])
+
     # choosing the color class with C>=4
     colorClass = None
     for color, vectors in colorsDict.items():
@@ -80,18 +83,27 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
         if vector in graphs[0].vertices:
             vector.label = len(colorsDict)
             break
+    # Save the basic color of graphG
+    colors.append([v.label for v in graphs[0].vertices])
     counter = 0
     # set all vectors with color colorClass of graphH to the new color and count the isomorphisms
     for vector in colorsDict[colorClass]:
         if not vector in graphs[0].vertices:
-            graphG = graphCopy(graphs[0])
-            graphH = graphCopy(graphs[1])
-            graphH.vertices[vector.identifier].label = len(colorsDict)
+            graphs[1].vertices[vector.identifier].label = len(colorsDict)
             # call countIsomorphism for the new colors
-            counter += countIsomorphism(graphG, graphH, checkIsomorphism)
+            counter += countIsomorphism(graphs[0], graphs[1], checkIsomorphism)
+            for vertice in range(len(graphs[1].vertices)):
+                graphs[1].vertices[vertice].label = colors[1][vertice]
             # if you're looking for isomorphisms and you find one, return True
             if checkIsomorphism == 1 and (counter > 0 or counter):
+                for vertice in range(len(graphs[0].vertices)):
+                    graphs[0].vertices[vertice].label = colors[0][vertice]
                 return True
+            # reset the colours
+            for vertice in range(len(graphs[1].vertices)):
+                graphs[0].vertices[vertice].label = colors[2][vertice]
+    for vertice in range(len(graphs[0].vertices)):
+        graphs[0].vertices[vertice].label = colors[0][vertice]
     return counter
 
 
@@ -202,7 +214,7 @@ def run_all(directory: str):
     total = 0
     file_num = 0
     for filename in os.listdir(directory):
-        if filename.endswith(".grl"):
+        if filename.endswith(".grl") or filename.endswith(".gr"):
             file_path = os.path.join(directory, filename)
             start = time.time()
             print(f"Processing {filename}...")
@@ -222,11 +234,11 @@ def run_all(directory: str):
 
 
 if __name__ == "__main__":
-    startTime = time.time()
-    print(main("Graphs/CustomGraphs/BranchingColorTest.gr"))
-    endTime = time.time()
-    totalTime = endTime - startTime
-    print(f"Time was {totalTime} seconds")
+    # startTime = time.time()
+    # print(main("Graphs/CustomGraphs/BranchingColorTest.gr"))
+    # endTime = time.time()
+    # totalTime = endTime - startTime
+    # print(f"Time was {totalTime} seconds")
 
-    #directory_path = "Graphs/LastYearTests"
-    #run_all(directory_path)
+    directory_path = "Graphs/TestGraphs"
+    run_all(directory_path)
