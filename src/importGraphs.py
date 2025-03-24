@@ -46,17 +46,15 @@ def calculateAut(graph: Graph):
     # if the graph is discrete return 1
     if len(set([v.label for v in graphs[0].vertices])) == len(graphs[0].vertices):
         return 1
-    else:
-        return brancher(graphs, 0)
+    return brancher(graphs, 0)
 
 
 # sets the colour of all vertices to it's base value
+@profile
 def setBase(graph: Graph):
-    i = 0
-    for vector in graph.vertices:
-        vector.label = 0
-        vector.identifier = i
-        i += 1
+    for i, vertex in enumerate(graph.vertices):
+        vertex.label = 0
+        vertex.identifier = i
 
 
 # brancher function, does the branching for the calls count isomorphisms for all vectors of a certain color
@@ -127,13 +125,10 @@ def countIsomorphism(graphG, graphH, checkIsomorphism):
 # create a dictionary with the colors as keys and the vectors with that color as values
 @profile
 def calculateColorDict(coloredGraphs):
-    colorsDict = {}
+    colorsDict = defaultdict(list)
     for graph in coloredGraphs:
         for vertex in graph.vertices:
-            color = vertex.label
-            if color not in colorsDict:
-                colorsDict[color] = []
-            colorsDict[color].append(vertex)
+            colorsDict[vertex.label].append(vertex)
     return colorsDict
 
 
@@ -147,11 +142,8 @@ def checkIsomorphism(graphs: [Graph]):
         return [[graphs[0]], [graphs[1]]]
     # else check if they are isomorphic in pairs, and ensure that no graphs are checked unnecessarily
     # start by creating two dictionaries, one for false isomorphisms and one for correct isomorphisms
-    falseIsomorphism = {}
-    correctIsomorphism = {}
-    for graph in graphs:
-        falseIsomorphism[graph.identifier] = set()
-        correctIsomorphism[graph.identifier] = set()
+    falseIsomorphism = {graph.identifier: set() for graph in graphs}
+    correctIsomorphism = {graph.identifier: {graph} for graph in graphs}
 
     # go over the graphs
     for graph1 in graphs:
@@ -182,17 +174,10 @@ def checkIsomorphism(graphs: [Graph]):
                 for graph3 in correctIsomorphism[graph1.identifier]:
                     falseIsomorphism[graph3.identifier].add(graph2)
                     falseIsomorphism[graph2.identifier].add(graph3)
+
     # create a list of the isomorphic classes in an unnecessarily complicated way
-    tempResult = []
-    for graph in graphs:
-        correctIsomorphism[graph.identifier].add(graph)
-        tempResult.append(list(correctIsomorphism[graph.identifier]))
-    result = []
-    for graphs in tempResult:
-        graphs.sort(key=lambda x: x.identifier)
-        if graphs not in result:
-            result.append(graphs)
-    return result
+    unique_classes = {frozenset(group) for group in correctIsomorphism.values()}
+    return [sorted(list(group), key=lambda x: x.identifier) for group in unique_classes]
 
 
 # make a copy of a graph
@@ -234,11 +219,11 @@ def run_all(directory: str):
 
 
 if __name__ == "__main__":
-    # startTime = time.time()
-    # print(main("Graphs/CustomGraphs/BranchingColorTest.gr"))
-    # endTime = time.time()
-    # totalTime = endTime - startTime
-    # print(f"Time was {totalTime} seconds")
+    #startTime = time.time()
+    #print(main("Graphs/LastYearCompetition/NH209_bonus01GI.grl"))
+    #endTime = time.time()
+    #totalTime = endTime - startTime
+    #print(f"Time was {totalTime} seconds")
 
     directory_path = "Graphs/TestGraphs"
     run_all(directory_path)

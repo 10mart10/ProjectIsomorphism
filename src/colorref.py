@@ -2,10 +2,10 @@
 from importGraphs import *
 from collections import defaultdict
 import time
-from line_profiler_pycharm import profile
+#from line_profiler_pycharm import profile
 
 
-@profile
+#@profile
 def basic_colorref(path: str) -> list:
     with open(path, 'r') as f:
         data = load_graph(f, read_list=True)
@@ -104,7 +104,7 @@ def basic_colorref(path: str) -> list:
 
 
 
-@profile
+#@profile
 def colorrefPreColored(graphs):
     n_graphs = len(graphs)
     initially_stable = {}
