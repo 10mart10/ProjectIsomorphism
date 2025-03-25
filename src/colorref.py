@@ -1,8 +1,8 @@
-
 from importGraphs import *
-from collections import defaultdict
+from collections import defaultdict, deque
 import time
-#from line_profiler_pycharm import profile
+import sys
+from line_profiler_pycharm import profile
 
 
 #@profile
@@ -69,7 +69,6 @@ def basic_colorref(path: str) -> list:
         if all(stable_iteration[g] is not None for g in range(n_graphs)):
             break
 
-    final_info = []
     eq_class_signatures = {}
 
     for g_idx, G in enumerate(graphs):
@@ -98,10 +97,14 @@ def basic_colorref(path: str) -> list:
         eq_classes[signature].append(graphs[g_idx])
 
     result = [(idx_list, len(list(key[0])), key[2], key[3]) for key, idx_list in eq_classes.items()]
-    print(result)
+    printResult = []
+    for key, idx_list in eq_classes.items():
+        printResult.append(
+            (sorted([g.identifier for g in idx_list]), sorted(list(key[0])), key[2], key[3]))
+
+    print(printResult)
 
     return result
-
 
 
 #@profile
@@ -159,3 +162,61 @@ def colorrefPreColored(graphs):
             break
     return graphs
 
+
+def refine(G, freq_map):
+    queue = deque(freq_map.keys())
+    iteration_count = 0
+
+    while queue:
+        color = queue.popleft()
+        colorsThatChange = defaultdict(list)
+
+        for v in freq_map[color]:
+            signature = tuple(sorted(n.label for n in v.neighbours))
+            colorsThatChange[signature].append(v)
+
+        new_colors = {}
+        for signature, vertices in colorsThatChange.items():
+            if len(vertices) < len(freq_map[color]):
+                new_color = max(freq_map.keys()) + 1
+                freq_map[new_color] = set(vertices)
+                new_colors[new_color] = vertices
+                freq_map[color] -= set(vertices)
+                queue.append(new_color)
+
+        iteration_count += 1 if new_colors else 0
+
+    return freq_map, iteration_count
+
+
+def fast_colorref(path):
+    with open(path, 'r') as f:
+        data = load_graph(f, read_list=True)
+    graphs = data[0]
+    n_graphs = len(graphs)
+
+    eq_classes = {}
+
+    for j, G in enumerate(graphs):
+        freq_map = {0: set(G.vertices)}
+        stable_partition, iterations = refine(G, freq_map)
+        sizes = sorted(len(v) for v in stable_partition.values())
+        discrete = len(sizes) == len(G.vertices)
+
+        key = tuple(sizes)
+        if key not in eq_classes:
+            eq_classes[key] = ([], sizes, iterations, discrete)
+
+        eq_classes[key][0].append(j)
+
+    result = [(idx_list, sorted(list(key)), iters, discrete) for idx_list, key, iters, discrete in
+              eq_classes.values()]
+    print(result)
+
+
+if __name__ == "__main__":
+    startTime = time.time()
+    fast_colorref(sys.argv[1])
+    endTime = time.time()
+    totalTime = endTime - startTime
+    print(f"Time was {totalTime} seconds")

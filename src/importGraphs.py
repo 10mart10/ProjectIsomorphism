@@ -5,7 +5,7 @@ from graph import *
 from colorref import *
 from copy import *
 
-from src.colorref import *
+from colorref import *
 
 
 # main function, does all the steps necessary for the project
