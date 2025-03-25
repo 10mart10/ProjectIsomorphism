@@ -174,17 +174,45 @@ def refine(G, freq_map):
         for v in freq_map[color]:
             signature = tuple(sorted(n.label for n in v.neighbours))
             colorsThatChange[signature].append(v)
+        # affected = defaultdict(list)
+        # for v in freq_map[color]:
+        #     for n in v.neighbours:
+        #         affected[n.label].append(n)
+        #         n.connections += 1
+        #
+        # for c, vertices in affected.items():
+        #     connections = defaultdict(list)
+        #     for v in vertices:
+        #         connections[v.connections].append(v)
+        #     if len(connections) > 1:
+        #         for conn, vertices in connections.items():
+        #             colorsThatChange[(c, conn)] += vertices
+
+        if len(colorsThatChange) > 1:
+            iteration_count += 1
 
         new_colors = {}
-        for signature, vertices in colorsThatChange.items():
-            if len(vertices) < len(freq_map[color]):
+        if len(colorsThatChange) > 1:
+            biggest = max(colorsThatChange, key=lambda x: len(colorsThatChange[x]))
+            for signature, vertices in colorsThatChange.items():
+                if signature == biggest:
+                    continue
                 new_color = max(freq_map.keys()) + 1
                 freq_map[new_color] = set(vertices)
                 new_colors[new_color] = vertices
                 freq_map[color] -= set(vertices)
                 queue.append(new_color)
-
-        iteration_count += 1 if new_colors else 0
+                for vertex in vertices:
+                    vertex.label = new_color
+        # for vertices in colorsThatChange.items():
+        #     if len(vertices) < len(freq_map[color]):
+        #         new_color = max(freq_map.keys()) + 1
+        #         freq_map[new_color] = set(vertices)
+        #         new_colors[new_color] = vertices
+        #         freq_map[color] -= set(vertices)
+        #         queue.append(new_color)
+        #         for vertex in vertices:
+        #             vertex.label = new_color
 
     return freq_map, iteration_count
 
@@ -196,6 +224,17 @@ def fast_colorref(path):
     n_graphs = len(graphs)
 
     eq_classes = {}
+
+    for j, G in enumerate(graphs):
+        for i, v in enumerate(G.vertices):
+            v.label = len(v.neighbours)
+            v.identifier = i
+        G.identifier = j
+
+    for g_idx, G in enumerate(graphs):
+        freq_map = defaultdict(int)
+        for v in G.vertices:
+            freq_map[v.label] += 1
 
     for j, G in enumerate(graphs):
         freq_map = {0: set(G.vertices)}
