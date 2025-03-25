@@ -3,21 +3,18 @@ from collections import defaultdict
 from line_profiler import profile
 
 
-@profile
+#@profile
 def basic_colorref(path: str) -> list:
     with open(path, 'r') as f:
         data = load_graph(f, read_list=True)
     graphs = data[0]
     n_graphs = len(graphs)
-    j = 0
-    for G in graphs:
-        i = 0
-        G.identifier = j
-        j += 1
-        for v in G.vertices:
+
+    for j, G in enumerate(graphs):
+        for i, v in enumerate(G.vertices):
             v.label = len(v.neighbours)
             v.identifier = i
-            i += 1
+        G.identifier = j
 
     initially_stable = {}
 
@@ -70,7 +67,6 @@ def basic_colorref(path: str) -> list:
         if all(stable_iteration[g] is not None for g in range(n_graphs)):
             break
 
-    final_info = []
     eq_class_signatures = {}
 
     for g_idx, G in enumerate(graphs):
@@ -110,7 +106,7 @@ def basic_colorref(path: str) -> list:
     return result
 
 
-@profile
+#@profile
 def colorrefPreColored(graphs):
     n_graphs = len(graphs)
     initially_stable = {}
