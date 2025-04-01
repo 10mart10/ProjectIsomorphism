@@ -3,7 +3,7 @@ from collections import defaultdict
 from line_profiler import profile
 
 
-#@profile
+@profile
 def basic_colorref(path: str) -> list:
     with open(path, 'r') as f:
         data = load_graph(f, read_list=True)
