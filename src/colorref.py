@@ -1,4 +1,4 @@
-from importGraphs import *
+from graph_io import *
 from collections import defaultdict, deque
 import time
 import sys
@@ -169,50 +169,45 @@ def refine(G, freq_map):
 
     while queue:
         color = queue.popleft()
-        colorsThatChange = defaultdict(list)
+        colorsThatChange = defaultdict()
 
+        affected = defaultdict(list)
         for v in freq_map[color]:
-            signature = tuple(sorted(n.label for n in v.neighbours))
-            colorsThatChange[signature].append(v)
-        # affected = defaultdict(list)
-        # for v in freq_map[color]:
-        #     for n in v.neighbours:
-        #         affected[n.label].append(n)
-        #         n.connections += 1
-        #
-        # for c, vertices in affected.items():
-        #     connections = defaultdict(list)
-        #     for v in vertices:
-        #         connections[v.connections].append(v)
-        #     if len(connections) > 1:
-        #         for conn, vertices in connections.items():
-        #             colorsThatChange[(c, conn)] += vertices
+            for n in v.neighbours:
+                if n not in affected[n.label]:
+                    affected[n.label].append(n)
+                n.connections += 1
 
-        if len(colorsThatChange) > 1:
-            iteration_count += 1
+        for c, vertices in affected.items():
+            connections = defaultdict(list)
+            for v in freq_map[c]:
+                connections[v.connections].append(v)
+                v.connections = 0
+            if len(connections) > 1:
+                freq_map.pop(c)
+                colorsThatChange[c] = defaultdict(list)
+                for conn, vertices in connections.items():
+                    colorsThatChange[c][conn] += vertices
 
         new_colors = {}
-        if len(colorsThatChange) > 1:
-            biggest = max(colorsThatChange, key=lambda x: len(colorsThatChange[x]))
-            for signature, vertices in colorsThatChange.items():
-                if signature == biggest:
-                    continue
-                new_color = max(freq_map.keys()) + 1
-                freq_map[new_color] = set(vertices)
-                new_colors[new_color] = vertices
-                freq_map[color] -= set(vertices)
-                queue.append(new_color)
-                for vertex in vertices:
-                    vertex.label = new_color
-        # for vertices in colorsThatChange.items():
-        #     if len(vertices) < len(freq_map[color]):
-        #         new_color = max(freq_map.keys()) + 1
-        #         freq_map[new_color] = set(vertices)
-        #         new_colors[new_color] = vertices
-        #         freq_map[color] -= set(vertices)
-        #         queue.append(new_color)
-        #         for vertex in vertices:
-        #             vertex.label = new_color
+        if colorsThatChange:
+            for c, connDict in colorsThatChange.items():
+                notInQueue = c not in queue
+                biggest = max(connDict, key=lambda x: len(connDict[x]))
+                for conn, vertices in connDict.items():
+                    if c in freq_map:
+                        new_color = max(freq_map.keys()) + 1
+                    else:
+                        new_color = c
+                    freq_map[new_color] = set(vertices)
+                    new_colors[new_color] = vertices
+                    for vertex in vertices:
+                        vertex.label = new_color
+                    if conn == biggest and notInQueue:
+                        continue
+                    queue.append(new_color)
+
+        iteration_count += 1 if new_colors else 0
 
     return freq_map, iteration_count
 
@@ -225,15 +220,13 @@ def fast_colorref(path):
 
     eq_classes = {}
 
-    for j, G in enumerate(graphs):
-        for i, v in enumerate(G.vertices):
-            v.label = len(v.neighbours)
-            v.identifier = i
-        G.identifier = j
-
     for g_idx, G in enumerate(graphs):
         freq_map = defaultdict(int)
-        for v in G.vertices:
+        G.identifier = g_idx
+        for i, v in enumerate(G.vertices):
+            v.identifier = i
+            v.label = 0
+            v.connections = 0
             freq_map[v.label] += 1
 
     for j, G in enumerate(graphs):
@@ -255,7 +248,7 @@ def fast_colorref(path):
 
 if __name__ == "__main__":
     startTime = time.time()
-    fast_colorref(sys.argv[1])
+    fast_colorref("Graphs/SampleGraphsBasicColorRefinement/colorref_smallexample_6_15.grl")
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")

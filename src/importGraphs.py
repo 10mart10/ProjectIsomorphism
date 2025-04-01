@@ -3,6 +3,7 @@ import os
 from graph_io import *
 from graph import *
 from colorref import *
+from line_profiler_pycharm import profile
 from copy import *
 
 from colorref import *
@@ -25,13 +26,13 @@ def main(path: str):
                 results.append(graphs[0])
             else:
                 results += checkIsomorphism(graphs[0])
-        if "Aut" in path:
+        # if "Aut" in path:
             # if the file is an Aut file, calculate the automorphisms
-            autResults = []
-            for result in results:
-                autResults.append((sorted([graph.identifier for graph in result]),
-                                   calculateAut(result[0])))
-            return autResults
+        autResults = []
+        for result in results:
+            autResults.append((sorted([graph.identifier for graph in result]),
+                               calculateAut(result[0])))
+        return autResults
         adIdentifier = []
         for result in results:
             adIdentifier.append(sorted([graph.identifier for graph in result]))
@@ -199,7 +200,7 @@ def run_all(directory: str):
     total = 0
     file_num = 0
     for filename in os.listdir(directory):
-        if filename.endswith(".grl") or filename.endswith(".gr"):
+        if (filename.endswith(".grl") or filename.endswith(".gr")) and filename.startswith(""):
             file_path = os.path.join(directory, filename)
             start = time.time()
             print(f"Processing {filename}...")
@@ -219,11 +220,11 @@ def run_all(directory: str):
 
 
 if __name__ == "__main__":
-    #startTime = time.time()
-    #print(main("Graphs/LastYearCompetition/NH209_bonus01GI.grl"))
-    #endTime = time.time()
-    #totalTime = endTime - startTime
-    #print(f"Time was {totalTime} seconds")
+    # startTime = time.time()
+    # print(main("Graphs/CustomGraphs/BranchingColorTest.gr"))
+    # endTime = time.time()
+    # totalTime = endTime - startTime
+    # print(f"Time was {totalTime} seconds")
 
     directory_path = "Graphs/TestGraphs"
     run_all(directory_path)
