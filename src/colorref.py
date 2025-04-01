@@ -189,15 +189,24 @@ def refine(G, freq_map):
         for c, buckets in to_split:
             del freq_map[c]
             bucket_keys = sorted(buckets.keys(), key=lambda k: (-len(buckets[k]), k))
-            for i, conn in enumerate(bucket_keys):
-                new_color = c if i == 0 else color_id
-                if i != 0:
+
+            used_color = False
+
+            for conn in bucket_keys:
+                if not used_color:
+                    new_color = c
+                    used_color = True
+                else:
+                    new_color = color_id
                     color_id += 1
+
                 freq_map[new_color] = set(buckets[conn])
                 for v in buckets[conn]:
                     v.label = new_color
-                if i != 0 or c not in queue:
+
+                if new_color != c:
                     queue.append(new_color)
+
             iteration_count += 1
 
     return freq_map, iteration_count
@@ -211,9 +220,10 @@ def fast_colorref(path):
     all_vertices = []
     for G in graphs:
         G.identifier = graphs.index(G)
-        for v in G.vertices:
+        for i, v in enumerate(G.vertices):
             v.label = len(v.neighbours)
             v.connections = 0
+            v.identifier = i
             all_vertices.append(v)
 
     freq_map = defaultdict(set)
@@ -247,9 +257,13 @@ def fast_colorref(path):
             eq_classes[key] = ([], sizes, iterations, discrete)
         eq_classes[key][0].append(G.identifier)
 
-    result = [(sorted(idx_list), sizes, iters, discrete) for idx_list, sizes, iters, discrete in
-              eq_classes.values()]
-    print(result)
+    printResult = [(sorted(idx_list), sizes, iters, discrete) for idx_list, sizes, iters, discrete in
+                   eq_classes.values()]
+    print(printResult)
+
+    result = [(list(graphs[i] for i in sorted(idx_list)), sizes, iters, discrete) for
+              idx_list, sizes, iters, discrete in eq_classes.values()]
+
     return result
 
 

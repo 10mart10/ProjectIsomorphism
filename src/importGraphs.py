@@ -20,6 +20,8 @@ def main(path: str):
     else:
         # get basic color refinement results
         refinedGraphs = basic_colorref(path)
+        # refinedGraphs = fast_colorref(path)
+
         results = []
         for graphs in refinedGraphs:
             if graphs[3] or len(graphs[0]) <= 1:
