@@ -166,6 +166,13 @@ def colorrefPreColored(graphs):
 def refine(G, freq_map):
     queue = deque(freq_map.keys())
     iteration_count = 0
+    color_history = []
+
+    initial_distribution = []
+    for color, vertices in freq_map.items():
+        initial_distribution.append((color, len(vertices)))
+    initial_distribution.sort(key=lambda x: (x[1], x[0]))
+    color_history.append(tuple(initial_distribution))
 
     while queue:
         color = queue.popleft()
@@ -207,9 +214,15 @@ def refine(G, freq_map):
                         continue
                     queue.append(new_color)
 
-        iteration_count += 1 if new_colors else 0
+        if new_colors:
+            iteration_count += 1
+            current_distribution = []
+            for color, vertices in freq_map.items():
+                current_distribution.append((color, len(vertices)))
+            current_distribution.sort(key=lambda x: (x[1], x[0]))
+            color_history.append(tuple(current_distribution))
 
-    return freq_map, iteration_count
+    return freq_map, iteration_count, color_history
 
 
 def fast_colorref(path):
@@ -221,34 +234,42 @@ def fast_colorref(path):
     eq_classes = {}
 
     for g_idx, G in enumerate(graphs):
-        freq_map = defaultdict(int)
+        # freq_map = defaultdict(int)
         G.identifier = g_idx
         for i, v in enumerate(G.vertices):
             v.identifier = i
             v.label = 0
             v.connections = 0
-            freq_map[v.label] += 1
+            # freq_map[v.label] += 1
 
     for j, G in enumerate(graphs):
         freq_map = {0: set(G.vertices)}
-        stable_partition, iterations = refine(G, freq_map)
+        stable_partition, iterations, color_history = refine(G, freq_map)
         sizes = sorted(len(v) for v in stable_partition.values())
+
+        color_distribution = []
+        for color, vertices in stable_partition.items():
+            color_distribution.append((color, len(vertices)))
+        color_distribution.sort(key=lambda x: (x[1], x[0]))
+        print(color_distribution)
+
         discrete = len(sizes) == len(G.vertices)
+        signature = tuple(color_history)
 
-        key = tuple(sizes)
-        if key not in eq_classes:
-            eq_classes[key] = ([], sizes, iterations, discrete)
+        if signature not in eq_classes:
+            eq_classes[signature] = ([], sizes, iterations, discrete)
 
-        eq_classes[key][0].append(j)
+        eq_classes[signature][0].append(j)
 
-    result = [(idx_list, sorted(list(key)), iters, discrete) for idx_list, key, iters, discrete in
-              eq_classes.values()]
+    result = [(sorted(idx_list), sizes, iters, discrete)
+              for (idx_list, sizes, iters, discrete) in eq_classes.values()]
+
     print(result)
 
 
 if __name__ == "__main__":
     startTime = time.time()
-    fast_colorref("Graphs/SampleGraphsBasicColorRefinement/colorref_smallexample_6_15.grl")
+    fast_colorref(sys.argv[1])
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")
