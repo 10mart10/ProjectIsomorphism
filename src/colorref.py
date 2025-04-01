@@ -166,105 +166,91 @@ def colorrefPreColored(graphs):
 def refine(G, freq_map):
     queue = deque(freq_map.keys())
     iteration_count = 0
-    color_history = []
-
-    initial_distribution = []
-    for color, vertices in freq_map.items():
-        initial_distribution.append((color, len(vertices)))
-    initial_distribution.sort(key=lambda x: (x[1], x[0]))
-    color_history.append(tuple(initial_distribution))
+    color_id = max(freq_map.keys()) + 1
 
     while queue:
         color = queue.popleft()
-        colorsThatChange = defaultdict()
-
         affected = defaultdict(list)
+
         for v in freq_map[color]:
             for n in v.neighbours:
-                if n not in affected[n.label]:
-                    affected[n.label].append(n)
+                affected[n.label].append(n)
                 n.connections += 1
 
+        to_split = []
         for c, vertices in affected.items():
-            connections = defaultdict(list)
+            buckets = defaultdict(list)
             for v in freq_map[c]:
-                connections[v.connections].append(v)
+                buckets[v.connections].append(v)
                 v.connections = 0
-            if len(connections) > 1:
-                freq_map.pop(c)
-                colorsThatChange[c] = defaultdict(list)
-                for conn, vertices in connections.items():
-                    colorsThatChange[c][conn] += vertices
+            if len(buckets) > 1:
+                to_split.append((c, buckets))
 
-        new_colors = {}
-        if colorsThatChange:
-            for c, connDict in colorsThatChange.items():
-                notInQueue = c not in queue
-                biggest = max(connDict, key=lambda x: len(connDict[x]))
-                for conn, vertices in connDict.items():
-                    if c in freq_map:
-                        new_color = max(freq_map.keys()) + 1
-                    else:
-                        new_color = c
-                    freq_map[new_color] = set(vertices)
-                    new_colors[new_color] = vertices
-                    for vertex in vertices:
-                        vertex.label = new_color
-                    if conn == biggest and notInQueue:
-                        continue
+        for c, buckets in to_split:
+            del freq_map[c]
+            bucket_keys = sorted(buckets.keys(), key=lambda k: (-len(buckets[k]), k))
+            for i, conn in enumerate(bucket_keys):
+                new_color = c if i == 0 else color_id
+                if i != 0:
+                    color_id += 1
+                freq_map[new_color] = set(buckets[conn])
+                for v in buckets[conn]:
+                    v.label = new_color
+                if i != 0 or c not in queue:
                     queue.append(new_color)
-
-        if new_colors:
             iteration_count += 1
-            current_distribution = []
-            for color, vertices in freq_map.items():
-                current_distribution.append((color, len(vertices)))
-            current_distribution.sort(key=lambda x: (x[1], x[0]))
-            color_history.append(tuple(current_distribution))
 
-    return freq_map, iteration_count, color_history
+    return freq_map, iteration_count
 
 
 def fast_colorref(path):
     with open(path, 'r') as f:
         data = load_graph(f, read_list=True)
     graphs = data[0]
-    n_graphs = len(graphs)
+
+    all_vertices = []
+    for G in graphs:
+        G.identifier = graphs.index(G)
+        for v in G.vertices:
+            v.label = len(v.neighbours)
+            v.connections = 0
+            all_vertices.append(v)
+
+    freq_map = defaultdict(set)
+    for v in all_vertices:
+        freq_map[v.label].add(v)
+
+    _, iterations = refine(None, freq_map)
 
     eq_classes = {}
+    for G in graphs:
 
-    for g_idx, G in enumerate(graphs):
-        # freq_map = defaultdict(int)
-        G.identifier = g_idx
-        for i, v in enumerate(G.vertices):
-            v.identifier = i
-            v.label = 0
-            v.connections = 0
-            # freq_map[v.label] += 1
+        freq_map_local = defaultdict(int)
+        for v in G.vertices:
+            freq_map_local[v.label] += 1
+        sizes = sorted(freq_map_local.values())
+        discrete = len(sizes) == len(G.vertices) and all(s == 1 for s in sizes)
 
-    for j, G in enumerate(graphs):
-        freq_map = {0: set(G.vertices)}
-        stable_partition, iterations, color_history = refine(G, freq_map)
-        sizes = sorted(len(v) for v in stable_partition.values())
+        vertex_profiles = sorted(
+            (v.label, tuple(sorted(n.label for n in v.neighbours)))
+            for v in G.vertices
+        )
 
-        color_distribution = []
-        for color, vertices in stable_partition.items():
-            color_distribution.append((color, len(vertices)))
-        color_distribution.sort(key=lambda x: (x[1], x[0]))
-        print(color_distribution)
+        key = (
+            tuple(sizes),
+            tuple(vertex_profiles),
+            iterations,
+            discrete
+        )
 
-        discrete = len(sizes) == len(G.vertices)
-        signature = tuple(color_history)
+        if key not in eq_classes:
+            eq_classes[key] = ([], sizes, iterations, discrete)
+        eq_classes[key][0].append(G.identifier)
 
-        if signature not in eq_classes:
-            eq_classes[signature] = ([], sizes, iterations, discrete)
-
-        eq_classes[signature][0].append(j)
-
-    result = [(sorted(idx_list), sizes, iters, discrete)
-              for (idx_list, sizes, iters, discrete) in eq_classes.values()]
-
+    result = [(sorted(idx_list), sizes, iters, discrete) for idx_list, sizes, iters, discrete in
+              eq_classes.values()]
     print(result)
+    return result
 
 
 if __name__ == "__main__":
