@@ -190,3 +190,5 @@ class permutation():
 				return False
 		return True
 
+	def __hash__(self):
+		return hash(tuple(self.P))

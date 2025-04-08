@@ -1,8 +1,9 @@
 from graph_io import *
+import os
 from collections import defaultdict, deque
 import time
 import sys
-from line_profiler_pycharm import profile
+#from line_profiler_pycharm import profile
 
 
 #@profile
@@ -269,7 +270,7 @@ def fast_colorref(path):
 
 if __name__ == "__main__":
     startTime = time.time()
-    fast_colorref(sys.argv[1])
+    print(fast_colorref("Graphs/SampleGraphsFastColorRefinement/threepaths1280.gr"))
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")
