@@ -46,10 +46,11 @@ def main(path: str, include_generators: bool = False):
     if "grl" not in path:
         with open(path) as f:
             G = load_graph(f)
-            aut_count = calculateAut(G)
+            graphs_refined = colorrefPreColored([G])
+            aut_count = calculateAut(graphs_refined[0])
 
             if include_generators:
-                generators = update_generating_set(G)
+                generators = update_generating_set(G, [], [])
                 return aut_count, generators
             else:
                 return aut_count
@@ -68,7 +69,7 @@ def main(path: str, include_generators: bool = False):
             for result in results:
                 aut_count = calculateAut(result[0])
                 if include_generators:
-                    generators = update_generating_set(result[0])
+                    generators = update_generating_set(result[0], [], [])
                     autResults.append((sorted([graph.identifier for graph in result]),
                                        aut_count,
                                        generators))
@@ -96,8 +97,6 @@ def main(path: str, include_generators: bool = False):
 def calculateAut(graph: Graph):
     setBase(graph)
     graphs = colorrefPreColored([graph])
-    if len(set([v.label for v in graphs[0].vertices])) == len(graphs[0].vertices):
-        return 1
 
     global X
     X = set()
@@ -105,17 +104,20 @@ def calculateAut(graph: Graph):
 
     generators = list(X)
     generators = Reduce(generators)
-
     return group_order(generators)
 
 
 # sets the colour of all vertices to it's base value
 #@profile
+# def setBase(graph: Graph):
+#     for i, vertex in enumerate(graph.vertices):
+#         vertex.label = 0
+#         vertex.identifier = i
+
 def setBase(graph: Graph):
     for i, vertex in enumerate(graph.vertices):
-        vertex.label = 0
+        vertex.label = len(vertex.neighbours)
         vertex.identifier = i
-
 
 # brancher function, does the branching for the calls count isomorphisms for all vectors of a certain color
 #@profile
@@ -255,51 +257,41 @@ def graphCopy(graph: Graph):
         newGraph.add_edge(e)
     return newGraph
 
-def apply_initial_coloring(graph, D, I):
-    new_graph = graphCopy(graph)
-    for color, (d_id, i_id) in enumerate(zip(D, I)):
-        for v in new_graph.vertices:
-            if v.identifier == d_id or v.identifier == i_id:
-                v.label = len(new_graph.vertices) + color + 1
-    return new_graph
-
-
 X = set()
 
 def update_generating_set(G, D, I):
     global X
-    if len(D) > 10:
-        return
 
-    mapping = list(range(len(G.vertices)))
-    for d, i in zip(D, I):
-        mapping[d] = i
     mapping = build_full_mapping(len(G.vertices), D, I)
+    print(f"Generated mapping: {mapping}")
     if mapping is None:
         return
-    perm = permutation(len(G.vertices), mapping=mapping)
+
+    try:
+        perm = permutation(len(G.vertices), mapping=mapping)
+    except AssertionError:
+        return
 
     if perm in X:
         return
-    X.add(perm)
 
-
-    G_colored = apply_initial_coloring(G, D, I)
+    # Step 3: Refine the colored graph
+    G_colored = graphCopy(G)
     G_refined = colorrefPreColored([G_colored])[0]
+    print(f"Refined labels after coloring: {[v.label for v in G_refined.vertices]}")
 
-    labels = [v.label for v in G_refined.vertices]
-    if sorted(labels) != sorted([v.label for v in G.vertices]):
+    if sorted(v.label for v in G_refined.vertices) != sorted(v.label for v in G.vertices):
         return
 
-    if len(set(labels)) == len(labels):
-        mapping = list(range(len(G.vertices)))
-        for d, i in zip(D, I):
-            mapping[d] = i
-        perm = permutation(len(G.vertices), mapping=mapping)
-        if not any(p == perm for p in X):
-            X.add(perm)
-        return
+    unique_labels = len(set(v.label for v in G_refined.vertices))
+    total_vertices = len(G_refined.vertices)
+    print(f"Unique labels: {unique_labels}, Total vertices: {total_vertices}")
 
+    if unique_labels == total_vertices:
+        print(f"Found discrete graph with labels: {[v.label for v in G_refined.vertices]}")
+        if countIsomorphism(G, G_colored, 1):
+                X.add(perm)
+        return
 
     color_dict = calculateColorDict([G_refined])
     C = next((v_list for v_list in color_dict.values() if len(v_list) >= 2), None)
@@ -310,6 +302,7 @@ def update_generating_set(G, D, I):
         for j, y in enumerate(C):
             if j <= i:
                 continue
+            print(f"Exploring pair ({x.identifier}, {y.identifier})")
             update_generating_set(G, D + [x.identifier], I + [y.identifier])
 
 
@@ -323,7 +316,6 @@ def group_order(generators):
 
     orbit = Orbit(generators, el)
     stab_generators = Stabilizer(generators, el)
-
     return len(orbit) * group_order(stab_generators)
 
 def build_full_mapping(n, D, I):
@@ -337,8 +329,6 @@ def build_full_mapping(n, D, I):
         used_targets.add(i)
 
     return mapping
-
-
 
 
 #@profile
