@@ -10,13 +10,14 @@ def main(path: str, include_generators: bool = False):
     if "grl" not in path:
         with open(path) as f:
             G = load_graph(f)
-            if USE_FAST_ALGORITHM:
-                graphs_refined = colorrefPreColoredFast([G])
-            else:
-                graphs_refined = colorrefPreColored([G])
+            G.identifier = 0
+            # if USE_FAST_ALGORITHM:
+            #     graphs_refined = colorrefPreColoredFast([G])
+            # else:
+            #     graphs_refined = colorrefPreColored([G])
 
-            aut_count = calculateAut(graphs_refined[0])
-
+            # aut_count = calculateAut(G)
+            aut_count = "aut broken"
             if include_generators:
                 generators = update_generating_set(G, [], [])
                 return aut_count, generators
@@ -35,19 +36,19 @@ def main(path: str, include_generators: bool = False):
             else:
                 results += checkIsomorphism(graphs[0])
 
-        if "Aut" in path:
-            autResults = []
-            for result in results:
-                aut_count = calculateAut(result[0])
-                if include_generators:
-                    generators = update_generating_set(result[0], [], [])
-                    autResults.append((sorted([graph.identifier for graph in result]),
-                                       aut_count,
-                                       generators))
-                else:
-                    autResults.append((sorted([graph.identifier for graph in result]),
-                                       aut_count))
-            return autResults
+        # if "Aut" in path:
+        #     autResults = []
+        #     for result in results:
+        #         aut_count = calculateAut(result[0])
+        #         if include_generators:
+        #             generators = update_generating_set(result[0], [], [])
+        #             autResults.append((sorted([graph.identifier for graph in result]),
+        #                                aut_count,
+        #                                generators))
+        #         else:
+        #             autResults.append((sorted([graph.identifier for graph in result]),
+        #                                aut_count))
+        #     return autResults
 
         adIdentifier = []
         for result in results:
@@ -59,7 +60,7 @@ def main(path: str, include_generators: bool = False):
 def calculateAut(graph: Graph):
     setBase(graph)
     if USE_FAST_ALGORITHM:
-        graphs = colorrefPreColoredFast([graph])
+        _, graphs = colorrefPreColoredFast([graph])
     else:
         graphs = colorrefPreColored([graph])
 
@@ -80,7 +81,7 @@ def setBase(graph: Graph):
 
 
 # brancher function, does the branching for the calls count isomorphisms for all vectors of a certain color
-#@profile
+@profile
 def brancher(graphs, checkIsomorphism, colorsDict=None):
     if len(graphs) == 1:
         graphs.append(graphCopy(graphs[0]))
@@ -98,10 +99,11 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
         if len(vectors) >= 4:
             colorClass = color
             break
+    newColor = max(colorsDict.keys()) + 1
     # set a random vector with color colorClass of graphG to the new color
     for vector in colorsDict[colorClass]:
         if vector in graphs[0].vertices:
-            vector.label = len(colorsDict)
+            vector.label = newColor
             break
     # Save the basic color of graphG
     colors.append([v.label for v in graphs[0].vertices])
@@ -109,9 +111,9 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
     # set all vectors with color colorClass of graphH to the new color and count the isomorphisms
     for vector in colorsDict[colorClass]:
         if not vector in graphs[0].vertices:
-            graphs[1].vertices[vector.identifier].label = len(colorsDict)
+            graphs[1].vertices[vector.identifier].label = newColor
             # call countIsomorphism for the new colors
-            counter += countIsomorphism(graphs[0], graphs[1], checkIsomorphism)
+            counter += countIsomorphism(graphs[0], graphs[1], checkIsomorphism, newColor)
             for vertice in range(len(graphs[1].vertices)):
                 graphs[1].vertices[vertice].label = colors[1][vertice]
             # if you're looking for isomorphisms and you find one, return True
@@ -129,10 +131,16 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
 
 # countIsomorphism function, stops if it's unbalanced or bijection and increase by one if it's an isomorphism.
 # If not it calls brancher to look deeper
-#@profile
-def countIsomorphism(graphG, graphH, checkIsomorphism):
+@profile
+def countIsomorphism(graphG, graphH, checkIsomorphism, colors):
     if USE_FAST_ALGORITHM:
-        coloredGraphs = colorrefPreColoredFast([graphG, graphH])
+        val, coloredGraphs = colorrefPreColoredFast([graphG, graphH], colors)
+        if val == 0:
+            return 0
+        if val == 1:
+            return 1
+        if val == 2:
+            return brancher([graphG, graphH], checkIsomorphism)
     else:
         coloredGraphs = colorrefPreColored([graphG, graphH])
 
@@ -149,7 +157,7 @@ def countIsomorphism(graphG, graphH, checkIsomorphism):
 
 
 # create a dictionary with the colors as keys and the vectors with that color as values
-#@profile
+@profile
 def calculateColorDict(coloredGraphs):
     colorsDict = defaultdict(list)
     for graph in coloredGraphs:
@@ -159,7 +167,7 @@ def calculateColorDict(coloredGraphs):
 
 
 # Given equivalence classes, check if they are isomorphic and return isomorphic classes as a list of lists
-#@profile
+@profile
 def checkIsomorphism(graphs: [Graph]):
     # if there are only two graphs, check if they are isomorphic
     if len(graphs) == 2:
@@ -208,9 +216,10 @@ def checkIsomorphism(graphs: [Graph]):
 
 
 # make a copy of a graph
-#@profile
+@profile
 def graphCopy(graph: Graph):
     newGraph = Graph(False, 0)
+    newGraph.identifier = graph.identifier
     for vertex in graph.vertices:
         v = Vertex(newGraph)
         v.identifier = vertex.identifier
@@ -244,7 +253,7 @@ def update_generating_set(G, D, I):
     G_colored = graphCopy(G)
 
     if USE_FAST_ALGORITHM:
-        G_refined = colorrefPreColoredFast([G_colored])[0]
+        _, G_refined = colorrefPreColoredFast([G_colored])[0]
     else:
         G_refined = colorrefPreColored([G_colored])[0]
 
@@ -327,11 +336,11 @@ def run_all(directory: str):
 
 
 if __name__ == "__main__":
-    # startTime = time.time()
-    # print(main("Graphs/TestGraphs/basicAut1.gr"))
-    # endTime = time.time()
-    # totalTime = endTime - startTime
-    # print(f"Time was {totalTime} seconds")
+    startTime = time.time()
+    print(main("Graphs/SampleGraphSetBranching/cubes7.grl"))
+    endTime = time.time()
+    totalTime = endTime - startTime
+    print(f"Time was {totalTime} seconds")
 
-    directory_path = "Graphs/LastYearTests"
-    run_all(directory_path)
+    # directory_path = "Graphs/TestGraphs"
+    # run_all(directory_path)
