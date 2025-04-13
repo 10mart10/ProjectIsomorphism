@@ -1,52 +1,20 @@
-import time
-import os
-from graph_io import *
 from graph import *
-from colorref import *
-from copy import *
 from basicpermutationgroup import Orbit, Stabilizer, Reduce
 from permv2 import *
-from collections import deque
-
 from colorref import *
 
+USE_FAST_ALGORITHM = True
 
-# main function, does all the steps necessary for the project
-#@profile
-# def main(path: str):
-#     if "grl" not in path:
-#         # opens singular graph and calculate the amount of automorphisms
-#         with open(path) as f:
-#             G = load_graph(f)
-#             return calculateAut(G)
-#     else:
-#         # get basic color refinement results
-#         refinedGraphs = basic_colorref(path)
-#         # refinedGraphs = fast_colorref(path)
-#
-#         results = []
-#         for graphs in refinedGraphs:
-#             if graphs[3] or len(graphs[0]) <= 1:
-#                 results.append(graphs[0])
-#             else:
-#                 results += checkIsomorphism(graphs[0])
-#         if "Aut" in path:
-#             # if the file is an Aut file, calculate the automorphisms
-#             autResults = []
-#             for result in results:
-#                 autResults.append((sorted([graph.identifier for graph in result]),
-#                                    calculateAut(result[0])))
-#             return autResults
-#         adIdentifier = []
-#         for result in results:
-#             adIdentifier.append(sorted([graph.identifier for graph in result]))
-#         return adIdentifier
 
 def main(path: str, include_generators: bool = False):
     if "grl" not in path:
         with open(path) as f:
             G = load_graph(f)
-            graphs_refined = colorrefPreColored([G])
+            if USE_FAST_ALGORITHM:
+                graphs_refined = colorrefPreColoredFast([G])
+            else:
+                graphs_refined = colorrefPreColored([G])
+
             aut_count = calculateAut(graphs_refined[0])
 
             if include_generators:
@@ -55,7 +23,10 @@ def main(path: str, include_generators: bool = False):
             else:
                 return aut_count
     else:
-        refinedGraphs = basic_colorref(path)
+        if USE_FAST_ALGORITHM:
+            refinedGraphs = fast_colorref(path)
+        else:
+            refinedGraphs = basic_colorref(path)
 
         results = []
         for graphs in refinedGraphs:
@@ -85,18 +56,12 @@ def main(path: str, include_generators: bool = False):
 
 
 # calculates the amount of automorphisms for a graph
-#@profile
-# def calculateAut(graph: Graph):
-#     setBase(graph)
-#     graphs = colorrefPreColored([graph])
-#     # if the graph is discrete return 1
-#     if len(set([v.label for v in graphs[0].vertices])) == len(graphs[0].vertices):
-#         return 1
-#     return brancher(graphs, 0)
-
 def calculateAut(graph: Graph):
     setBase(graph)
-    graphs = colorrefPreColored([graph])
+    if USE_FAST_ALGORITHM:
+        graphs = colorrefPreColoredFast([graph])
+    else:
+        graphs = colorrefPreColored([graph])
 
     global X
     X = set()
@@ -108,16 +73,11 @@ def calculateAut(graph: Graph):
 
 
 # sets the colour of all vertices to it's base value
-#@profile
-# def setBase(graph: Graph):
-#     for i, vertex in enumerate(graph.vertices):
-#         vertex.label = 0
-#         vertex.identifier = i
-
 def setBase(graph: Graph):
     for i, vertex in enumerate(graph.vertices):
         vertex.label = len(vertex.neighbours)
         vertex.identifier = i
+
 
 # brancher function, does the branching for the calls count isomorphisms for all vectors of a certain color
 #@profile
@@ -171,7 +131,11 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
 # If not it calls brancher to look deeper
 #@profile
 def countIsomorphism(graphG, graphH, checkIsomorphism):
-    coloredGraphs = colorrefPreColored([graphG, graphH])
+    if USE_FAST_ALGORITHM:
+        coloredGraphs = colorrefPreColoredFast([graphG, graphH])
+    else:
+        coloredGraphs = colorrefPreColored([graphG, graphH])
+
     colorsDict = calculateColorDict(coloredGraphs)
     graphGcolors = sorted([v.label for v in graphG.vertices])
     # balanced or not
@@ -182,7 +146,6 @@ def countIsomorphism(graphG, graphH, checkIsomorphism):
         return 1
 
     return brancher([graphG, graphH], checkIsomorphism, colorsDict)
-
 
 
 # create a dictionary with the colors as keys and the vectors with that color as values
@@ -212,7 +175,8 @@ def checkIsomorphism(graphs: [Graph]):
     for graph1 in graphs:
         for graph2 in graphs:
             # if the graphs are already checked, directly or indirectly, skip them
-            if graph1 in correctIsomorphism[graph2.identifier] or graph1 in falseIsomorphism[graph2.identifier]:
+            if graph1 in correctIsomorphism[graph2.identifier] or graph1 in falseIsomorphism[
+                graph2.identifier]:
                 continue
             if graph1 == graph2:
                 continue
@@ -257,7 +221,9 @@ def graphCopy(graph: Graph):
         newGraph.add_edge(e)
     return newGraph
 
+
 X = set()
+
 
 def update_generating_set(G, D, I):
     global X
@@ -275,9 +241,13 @@ def update_generating_set(G, D, I):
     if perm in X:
         return
 
-    # Step 3: Refine the colored graph
     G_colored = graphCopy(G)
-    G_refined = colorrefPreColored([G_colored])[0]
+
+    if USE_FAST_ALGORITHM:
+        G_refined = colorrefPreColoredFast([G_colored])[0]
+    else:
+        G_refined = colorrefPreColored([G_colored])[0]
+
     print(f"Refined labels after coloring: {[v.label for v in G_refined.vertices]}")
 
     if sorted(v.label for v in G_refined.vertices) != sorted(v.label for v in G.vertices):
@@ -290,7 +260,7 @@ def update_generating_set(G, D, I):
     if unique_labels == total_vertices:
         print(f"Found discrete graph with labels: {[v.label for v in G_refined.vertices]}")
         if countIsomorphism(G, G_colored, 1):
-                X.add(perm)
+            X.add(perm)
         return
 
     color_dict = calculateColorDict([G_refined])
@@ -317,6 +287,7 @@ def group_order(generators):
     orbit = Orbit(generators, el)
     stab_generators = Stabilizer(generators, el)
     return len(orbit) * group_order(stab_generators)
+
 
 def build_full_mapping(n, D, I):
     mapping = list(range(n))
@@ -355,15 +326,12 @@ def run_all(directory: str):
     print(file_num)
 
 
-
-
-
 if __name__ == "__main__":
-    startTime = time.time()
-    print(main("Graphs/TestGraphs/basicAut1.gr"))
-    endTime = time.time()
-    totalTime = endTime - startTime
-    print(f"Time was {totalTime} seconds")
+    # startTime = time.time()
+    # print(main("Graphs/TestGraphs/basicAut1.gr"))
+    # endTime = time.time()
+    # totalTime = endTime - startTime
+    # print(f"Time was {totalTime} seconds")
 
-    #directory_path = "Graphs/TestGraphs"
-    #run_all(directory_path)
+    directory_path = "Graphs/LastYearTests"
+    run_all(directory_path)

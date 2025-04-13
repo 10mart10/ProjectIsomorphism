@@ -164,6 +164,19 @@ def colorrefPreColored(graphs):
     return graphs
 
 
+def colorrefPreColoredFast(graphs):
+    freq_map = defaultdict(set)
+
+    for G in graphs:
+        for v in G.vertices:
+            v.connections = 0
+            freq_map[v.label].add(v)
+
+    refine(None, freq_map)
+
+    return graphs
+
+
 def refine(G, freq_map):
     queue = deque(freq_map.keys())
     iteration_count = 0
