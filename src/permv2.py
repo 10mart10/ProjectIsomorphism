@@ -189,3 +189,6 @@ class permutation():
 			if self.P[i]!=other.P[i]:
 				return False
 		return True
+
+	def __hash__(self):
+		return hash(tuple(self.P))
