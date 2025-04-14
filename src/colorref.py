@@ -286,7 +286,11 @@ def fast_colorref(path):
 
 if __name__ == "__main__":
     startTime = time.time()
-    print(fast_colorref("Graphs/SampleGraphsFastColorRefinement/threepaths1280.gr"))
+    print(fast_colorref("Graphs/LastYearCompetition/NH209_bonus01GI.grl"))
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")
+
+
+
+
