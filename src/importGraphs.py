@@ -3,7 +3,7 @@ from basicpermutationgroup import Orbit, Stabilizer, Reduce
 from permv2 import *
 from colorref import *
 
-USE_FAST_ALGORITHM = False
+USE_FAST_ALGORITHM = True
 
 
 def main(path: str, include_generators: bool = False):
@@ -59,7 +59,10 @@ def main(path: str, include_generators: bool = False):
 def calculateAut(graph: Graph):
     setBase(graph)
     if USE_FAST_ALGORITHM:
-        _, graphs = colorrefPreColoredFast([graph])
+        result = colorrefPreColoredFast([graph])  # Adjusted to handle a single return value
+        if isinstance(result, int):
+            raise ValueError("colorrefPreColoredFast returned an integer instead of a graph object.")
+        graphs = result  # Assume result is a list of Graph objects
     else:
         graphs = colorrefPreColored([graph])
 
@@ -237,7 +240,7 @@ def update_generating_set(G, D, I):
     global X
 
     mapping = build_full_mapping(len(G.vertices), D, I)
-    print(f"Generated mapping: {mapping}")
+    #print(f"Generated mapping: {mapping}")
     if mapping is None:
         return
 
@@ -256,14 +259,14 @@ def update_generating_set(G, D, I):
     else:
         G_refined = colorrefPreColored([G_colored])[0]
 
-    print(f"Refined labels after coloring: {[v.label for v in G_refined.vertices]}")
+    #print(f"Refined labels after coloring: {[v.label for v in G_refined.vertices]}")
 
     if sorted(v.label for v in G_refined.vertices) != sorted(v.label for v in G.vertices):
         return
 
     unique_labels = len(set(v.label for v in G_refined.vertices))
     total_vertices = len(G_refined.vertices)
-    print(f"Unique labels: {unique_labels}, Total vertices: {total_vertices}")
+    #print(f"Unique labels: {unique_labels}, Total vertices: {total_vertices}")
 
     if unique_labels == total_vertices:
         print(f"Found discrete graph with labels: {[v.label for v in G_refined.vertices]}")
@@ -280,7 +283,7 @@ def update_generating_set(G, D, I):
         for j, y in enumerate(C):
             if j <= i:
                 continue
-            print(f"Exploring pair ({x.identifier}, {y.identifier})")
+            #print(f"Exploring pair ({x.identifier}, {y.identifier})")
             update_generating_set(G, D + [x.identifier], I + [y.identifier])
 
 
