@@ -1,5 +1,5 @@
 from graph import *
-from basicpermutationgroup import Orbit, Stabilizer, Reduce, FindNonTrivialOrbit
+from basicpermutationgroup import Orbit, Stabilizer, Reduce
 from permv2 import *
 from colorref import *
 
@@ -10,14 +10,13 @@ def main(path: str, include_generators: bool = False):
     if "grl" not in path:
         with open(path) as f:
             G = load_graph(f)
-            G.identifier = 0
-            # if USE_FAST_ALGORITHM:
-            #     graphs_refined = colorrefPreColoredFast([G])
-            # else:
-            #     graphs_refined = colorrefPreColored([G])
+            if USE_FAST_ALGORITHM:
+                graphs_refined = colorrefPreColoredFast([G])
+            else:
+                graphs_refined = colorrefPreColored([G])
 
-            aut_count = calculateAut(G)
-            #aut_count = "aut broken"
+            aut_count = calculateAut(graphs_refined[0])
+
             if include_generators:
                 generators = update_generating_set(G, [], [])
                 return aut_count, generators
@@ -36,19 +35,19 @@ def main(path: str, include_generators: bool = False):
             else:
                 results += checkIsomorphism(graphs[0])
 
-        # if "Aut" in path:
-        #     autResults = []
-        #     for result in results:
-        #         aut_count = calculateAut(result[0])
-        #         if include_generators:
-        #             generators = update_generating_set(result[0], [], [])
-        #             autResults.append((sorted([graph.identifier for graph in result]),
-        #                                aut_count,
-        #                                generators))
-        #         else:
-        #             autResults.append((sorted([graph.identifier for graph in result]),
-        #                                aut_count))
-        #     return autResults
+        if "Aut" in path:
+            autResults = []
+            for result in results:
+                aut_count = calculateAut(result[0])
+                if include_generators:
+                    generators = update_generating_set(result[0], [], [])
+                    autResults.append((sorted([graph.identifier for graph in result]),
+                                       aut_count,
+                                       generators))
+                else:
+                    autResults.append((sorted([graph.identifier for graph in result]),
+                                       aut_count))
+            return autResults
 
         adIdentifier = []
         for result in results:
@@ -60,30 +59,17 @@ def main(path: str, include_generators: bool = False):
 def calculateAut(graph: Graph):
     setBase(graph)
     if USE_FAST_ALGORITHM:
-        _, graphs = colorrefPreColoredFast([graph])
+        graphs = colorrefPreColoredFast([graph])
     else:
         graphs = colorrefPreColored([graph])
 
     global X
     X = set()
     update_generating_set(graphs[0], [], [])
-    print("Final generators:", [str(p) for p in X])
-    print("Total:", len(X))
-
 
     generators = list(X)
-    gens = Reduce(generators)
-
-    # Check for trivial automorphism after reduction
-    if len(gens) == 0 or (len(gens) == 1 and gens[0].istrivial()):
-        print("Warning: Only trivial automorphism")
-
-    print("Final generators 2:", [str(g) for g in gens])
-
-    order = group_order(gens)
-    print("Automorphism group order:", order)
-    return order
-
+    generators = Reduce(generators)
+    return group_order(generators)
 
 
 # sets the colour of all vertices to it's base value
@@ -145,34 +131,15 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
 # countIsomorphism function, stops if it's unbalanced or bijection and increase by one if it's an isomorphism.
 # If not it calls brancher to look deeper
 #@profile
-def countIsomorphism(graphG, graphH, checkIsomorphism, colors):
+def countIsomorphism(graphG, graphH, checkIsomorphism, color=None):
     if USE_FAST_ALGORITHM:
-        val, coloredGraphs = colorrefPreColoredFast([graphG, graphH], colors)
-        if val == 0:
-            return 0
-        if val == 1:
-            return 1
-        if val == 2:
-            return brancher([graphG, graphH], checkIsomorphism)
+        coloredGraphs = colorrefPreColoredFast([graphG, graphH], color)
     else:
         coloredGraphs = colorrefPreColored([graphG, graphH])
 
     colorsDict = calculateColorDict(coloredGraphs)
     graphGcolors = sorted([v.label for v in graphG.vertices])
     # balanced or not
-
-    print(f"G labels: {[v.label for v in graphG.vertices]}")
-    print(f"H labels: {[v.label for v in graphH.vertices]}")
-
-    # Adjacency check (lightweight)
-    print("G adjacency:")
-    for v in graphG.vertices:
-        print(f"{v.identifier}: {[n.identifier for n in v.neighbours]}")
-    print("H adjacency:")
-    for v in graphH.vertices:
-        print(f"{v.identifier}: {[n.identifier for n in v.neighbours]}")
-
-
     if graphGcolors != sorted([v.label for v in graphH.vertices]):
         return 0
     # bijection or not
@@ -245,7 +212,6 @@ def checkIsomorphism(graphs: [Graph]):
 #@profile
 def graphCopy(graph: Graph):
     newGraph = Graph(False, 0)
-    newGraph.identifier = graph.identifier
     for vertex in graph.vertices:
         v = Vertex(newGraph)
         v.identifier = vertex.identifier
@@ -259,76 +225,56 @@ def graphCopy(graph: Graph):
 
 X = set()
 
-def update_generating_set(G, D, I, depth=0, seen=None):
-    global X
-    MAX_DEPTH = 8
-    if depth > MAX_DEPTH:
-        return
 
-    if seen is None:
-        seen = set()
+def update_generating_set(G, D, I):
+    global X
 
     mapping = build_full_mapping(len(G.vertices), D, I)
+    # print(f"Generated mapping: {mapping}")
     if mapping is None:
-        return
-
-
-    mapping_tuple = tuple(mapping)
-    if mapping_tuple in seen:
-        return
-    seen.add(mapping_tuple)
-
-
-    if len(set(mapping)) != len(mapping):
-        print("Invalid permutation — skipping")
         return
 
     try:
         perm = permutation(len(G.vertices), mapping=mapping)
-        if not hasattr(G, "generators"):
-            G.generators = set()
-        if perm not in G.generators:
-            print(f"Confirmed automorphism: {perm}")
-            G.generators.add(perm)
-    except Exception as e:
-        print(f" Error: {e}")
+    except AssertionError:
         return
 
-    G_permuted = graphCopy(G)
+    if perm in X:
+        return
+
+    G_colored = graphCopy(G)
 
     if USE_FAST_ALGORITHM:
-        _, refined_list = colorrefPreColoredFast([G_permuted])
-        G_permuted = refined_list[0]
+        G_refined = colorrefPreColoredFast([G_colored])[0]
     else:
-        G_permuted = colorrefPreColored([G_permuted])[0]
+        G_refined = colorrefPreColored([G_colored])[0]
 
-    is_auto = countIsomorphism(G, G_permuted, 1, max(v.label for v in G.vertices) + 1)
+    # print(f"Refined labels after coloring: {[v.label for v in G_refined.vertices]}")
 
-    if is_auto:
-        if perm not in X:
-            print(f"Confirmed automorphism: {perm}")
+    if sorted(v.label for v in G_refined.vertices) != sorted(v.label for v in G.vertices):
+        return
+
+    unique_labels = len(set(v.label for v in G_refined.vertices))
+    total_vertices = len(G_refined.vertices)
+    # print(f"Unique labels: {unique_labels}, Total vertices: {total_vertices}")
+
+    if unique_labels == total_vertices:
+        print(f"Found discrete graph with labels: {[v.label for v in G_refined.vertices]}")
+        if countIsomorphism(G, G_colored, 1):
             X.add(perm)
-        else:
-            print(f" Duplicate automorphism: {perm}")
-    else:
-        print(f" Not an automorphism: {perm}")
+        return
 
+    color_dict = calculateColorDict([G_refined])
+    C = next((v_list for v_list in color_dict.values() if len(v_list) >= 2), None)
+    if not C:
+        return
 
-    color_dict = calculateColorDict([G_permuted])
-
-    for color, verts in color_dict.items():
-        if len(verts) < 2:
-            continue
-        for i in range(len(verts)):
-            for j in range(i + 1, len(verts)):
-                d = verts[i].identifier
-                i_ = verts[j].identifier
-
-                if d in D or i_ in I:
-                    continue
-
-                update_generating_set(G, D + [d], I + [i_], depth + 1, seen)
-                update_generating_set(G, D + [i_], I + [d], depth + 1, seen)
+    for i, x in enumerate(C):
+        for j, y in enumerate(C):
+            if j <= i:
+                continue
+            # print(f"Exploring pair ({x.identifier}, {y.identifier})")
+            update_generating_set(G, D + [x.identifier], I + [y.identifier])
 
 
 def group_order(generators):
@@ -345,32 +291,16 @@ def group_order(generators):
 
 
 def build_full_mapping(n, D, I):
-    if len(D) != len(I):
-        return None
-
-    mapping = [-1] * n
+    mapping = list(range(n))
     used_targets = set()
 
     for d, i in zip(D, I):
-        if mapping[d] != -1 or i in used_targets:
+        if i in used_targets:
             return None
         mapping[d] = i
         used_targets.add(i)
 
-    remaining_targets = [i for i in range(n) if i not in used_targets]
-    unmapped_positions = [i for i, m in enumerate(mapping) if m == -1]
-
-    if len(unmapped_positions) != len(remaining_targets):
-        return None
-
-    for i, pos in enumerate(unmapped_positions):
-        mapping[pos] = remaining_targets[i]
-
-    if len(set(mapping)) != n:
-        return None
-
     return mapping
-
 
 
 #@profile
@@ -397,13 +327,12 @@ def run_all(directory: str):
     print(file_num)
 
 
-
 if __name__ == "__main__":
-    startTime = time.time()
-    print(main("Graphs/TestGraphs/basicAut1.gr"))
-    endTime = time.time()
-    totalTime = endTime - startTime
-    print(f"Time was {totalTime} seconds")
+    # startTime = time.time()
+    # print(main("Graphs/TestGraphs/basicAut1.gr"))
+    # endTime = time.time()
+    # totalTime = endTime - startTime
+    # print(f"Time was {totalTime} seconds")
 
-    # directory_path = "Graphs/TestGraphs"
-    # run_all(directory_path)
+    directory_path = "Graphs/TestGraphs"
+    run_all(directory_path)
