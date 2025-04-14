@@ -15,10 +15,11 @@ def main(path: str):
         # opens singular graph and calculate the amount of automorphisms
         with open(path) as f:
             G = load_graph(f)
-            return calculateAut(G)
+            # return calculateAut(G)
+            return "no aut"
     else:
         # get basic color refinement results
-        refinedGraphs = basic_colorref(path)
+        refinedGraphs = fast_colorref(path)
         results = []
         for graphs in refinedGraphs:
             if graphs[3] or len(graphs[0]) <= 1:
@@ -27,11 +28,11 @@ def main(path: str):
                 results += checkIsomorphism(graphs[0])
         # if "Aut" in path:
             # if the file is an Aut file, calculate the automorphisms
-        autResults = []
-        for result in results:
-            autResults.append((sorted([graph.identifier for graph in result]),
-                               calculateAut(result[0])))
-        return autResults
+        # autResults = []
+        # for result in results:
+        #     autResults.append((sorted([graph.identifier for graph in result]),
+        #                        calculateAut(result[0])))
+        # return autResults
         adIdentifier = []
         for result in results:
             adIdentifier.append(sorted([graph.identifier for graph in result]))
@@ -42,7 +43,7 @@ def main(path: str):
 @profile
 def calculateAut(graph: Graph):
     setBase(graph)
-    graphs = colorrefPreColored([graph])
+    graphs = colorrefPreColoredFast([graph])
     counter = Value('i', 0)
     amountOfProcesses = Value('i', 0)
     # if the graph is discrete return 1
@@ -55,11 +56,9 @@ def calculateAut(graph: Graph):
 
 # sets the colour of all vertices to it's base value
 def setBase(graph: Graph):
-    i = 0
-    for vector in graph.vertices:
-        vector.label = 0
-        vector.identifier = i
-        i += 1
+    for i, vertex in enumerate(graph.vertices):
+        vertex.label = len(vertex.neighbours)
+        vertex.identifier = i
 
 
 # brancher function, does the branching for the calls count isomorphisms for all vectors of a certain color
@@ -80,25 +79,26 @@ def brancher(graphs, checkIsomorphism, counter=Value('i', 0), amountOfProcesses=
         if len(vectors) >= 4:
             colorClass = color
             break
+    newColor = max(colorsDict.keys()) + 1
     # set a random vector with color colorClass of graphG to the new color
     for vector in colorsDict[colorClass]:
         if vector in graphs[0].vertices:
-            vector.label = len(colorsDict)
+            vector.label = newColor
             break
     colors.append([v.label for v in graphs[0].vertices])
     processes = []
     # set all vectors with color colorClass of graphH to the new color and count the isomorphisms
     for vector in colorsDict[colorClass]:
         if not vector in graphs[0].vertices:
-            graphs[1].vertices[vector.identifier].label = len(colorsDict)
+            graphs[1].vertices[vector.identifier].label = newColor
             # call countIsomorphism for the new colors
             if amountOfProcesses is not None and amountOfProcesses.value < MAX_PROCESSES:
                 amountOfProcesses.value += 1
-                p = Process(target=countIsomorphism, args=(graphs[0], graphs[1], checkIsomorphism, counter, amountOfProcesses,))
+                p = Process(target=countIsomorphism, args=(graphs[0], graphs[1], checkIsomorphism, counter, amountOfProcesses, newColor, ))
                 p.start()
                 processes.append(p)
             else:
-                countIsomorphism(graphs[0], graphs[1], checkIsomorphism, counter, amountOfProcesses)
+                countIsomorphism(graphs[0], graphs[1], checkIsomorphism, counter, amountOfProcesses, newColor)
                 for vertice in range(len(graphs[1].vertices)):
                     graphs[0].vertices[vertice].label = colors[2][vertice]
                     graphs[1].vertices[vertice].label = colors[1][vertice]
@@ -120,8 +120,8 @@ def brancher(graphs, checkIsomorphism, counter=Value('i', 0), amountOfProcesses=
 # countIsomorphism function, stops if it's unbalanced or bijection and increase by one if it's an isomorphism.
 # If not it calls brancher to look deeper
 @profile
-def countIsomorphism(graphG, graphH, checkIsomorphism, counter, amountOfProcesses):
-    coloredGraphs = colorrefPreColored([graphG, graphH])
+def countIsomorphism(graphG, graphH, checkIsomorphism, counter, amountOfProcesses, newColor):
+    coloredGraphs = colorrefPreColoredFast([graphG, graphH], newColor)
     colorsDict = calculateColorDict(coloredGraphs)
     graphGcolors = sorted([v.label for v in graphG.vertices])
     # balanced or not
@@ -139,13 +139,10 @@ def countIsomorphism(graphG, graphH, checkIsomorphism, counter, amountOfProcesse
 # create a dictionary with the colors as keys and the vectors with that color as values
 @profile
 def calculateColorDict(coloredGraphs):
-    colorsDict = {}
+    colorsDict = defaultdict(list)
     for graph in coloredGraphs:
         for vertex in graph.vertices:
-            color = vertex.label
-            if color not in colorsDict:
-                colorsDict[color] = []
-            colorsDict[color].append(vertex)
+            colorsDict[vertex.label].append(vertex)
     return colorsDict
 
 
@@ -200,16 +197,8 @@ def checkIsomorphism(graphs: [Graph]):
                     falseIsomorphism[graph3.identifier].add(graph2)
                     falseIsomorphism[graph2.identifier].add(graph3)
     # create a list of the isomorphic classes in an unnecessarily complicated way
-    tempResult = []
-    for graph in graphs:
-        correctIsomorphism[graph.identifier].add(graph)
-        tempResult.append(list(correctIsomorphism[graph.identifier]))
-    result = []
-    for graphs in tempResult:
-        graphs.sort(key=lambda x: x.identifier)
-        if graphs not in result:
-            result.append(graphs)
-    return result
+    unique_classes = {frozenset(group) for group in correctIsomorphism.values()}
+    return [sorted(list(group), key=lambda x: x.identifier) for group in unique_classes]
 
 
 def GIMultiProcessing(graph1, graph2, result):
@@ -239,7 +228,7 @@ def run_all(directory: str):
     total = 0
     file_num = 0
     for filename in os.listdir(directory):
-        if (filename.endswith(".grl") or filename.endswith(".gr")) and filename.startswith("cubes"):
+        if (filename.endswith(".grl") or filename.endswith(".gr")) and filename.startswith(""):
             file_path = os.path.join(directory, filename)
             start = time.time()
             print(f"Processing {filename}...")
@@ -265,5 +254,5 @@ if __name__ == "__main__":
     # totalTime = endTime - startTime
     # print(f"Time was {totalTime} seconds")
 
-    directory_path = "Graphs/SampleGraphSetBranching"
+    directory_path = "Graphs/TestGraphs"
     run_all(directory_path)

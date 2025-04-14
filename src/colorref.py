@@ -1,6 +1,6 @@
 
 from importGraphs import *
-from collections import defaultdict
+from collections import defaultdict, deque
 import time
 from line_profiler_pycharm import profile
 
@@ -159,3 +159,121 @@ def colorrefPreColored(graphs):
             break
     return graphs
 
+def colorrefPreColoredFast(graphs, color=None):
+    freq_map = defaultdict(set)
+
+    for G in graphs:
+        for v in G.vertices:
+            v.connections = 0
+            freq_map[v.label].add(v)
+
+    refine(None, freq_map, color)
+
+    return graphs
+
+
+def refine(G, freq_map, color=None):
+    if color is not None:
+        queue = deque([color])
+    else:
+        queue = deque(freq_map.keys())
+    iteration_count = 0
+    color_id = max(freq_map.keys()) + 1
+
+    while queue:
+        color = queue.popleft()
+        affected = defaultdict(set)
+
+        for v in freq_map[color]:
+            for n in v.neighbours:
+                affected[n.label].add(n)
+                n.connections += 1
+
+        to_split = []
+        for c, vertices in affected.items():
+            buckets = defaultdict(list)
+            for v in freq_map[c]:
+                buckets[v.connections].append(v)
+                v.connections = 0
+            if len(buckets) > 1:
+                to_split.append((c, buckets))
+
+        for c, buckets in to_split:
+            del freq_map[c]
+            bucket_keys = sorted(buckets.keys(), key=lambda k: (-len(buckets[k]), k))
+
+            used_color = False
+
+            for conn in bucket_keys:
+                if not used_color:
+                    new_color = c
+                    used_color = True
+                else:
+                    new_color = color_id
+                    color_id += 1
+
+                freq_map[new_color] = set(buckets[conn])
+                for v in buckets[conn]:
+                    v.label = new_color
+
+                if new_color != c:
+                    queue.append(new_color)
+
+            iteration_count += 1
+
+    return freq_map, iteration_count
+
+
+def fast_colorref(path):
+    with open(path, 'r') as f:
+        data = load_graph(f, read_list=True)
+    graphs = data[0]
+
+    all_vertices = []
+    for G in graphs:
+        G.identifier = graphs.index(G)
+        for i, v in enumerate(G.vertices):
+            v.label = len(v.neighbours)
+            v.connections = 0
+            v.identifier = i
+            all_vertices.append(v)
+
+    freq_map = defaultdict(set)
+    for v in all_vertices:
+        freq_map[v.label].add(v)
+
+    _, iterations = refine(None, freq_map)
+
+    eq_classes = {}
+    for G in graphs:
+
+        freq_map_local = defaultdict(int)
+        for v in G.vertices:
+            freq_map_local[v.label] += 1
+        sizes = sorted(freq_map_local.values())
+        discrete = len(sizes) == len(G.vertices) and all(s == 1 for s in sizes)
+
+        vertex_profiles = sorted(
+            (v.label, tuple(sorted(n.label for n in v.neighbours)))
+            for v in G.vertices
+        )
+
+        key = (
+            tuple(sizes),
+            tuple(vertex_profiles),
+            iterations,
+            discrete
+        )
+
+        if key not in eq_classes:
+            eq_classes[key] = ([], sizes, iterations, discrete)
+        eq_classes[key][0].append(G.identifier)
+
+    printResult = [(sorted(idx_list), sizes, iters, discrete) for idx_list, sizes, iters, discrete in
+                   eq_classes.values()]
+    print(printResult)
+
+    result = [(list(graphs[i] for i in sorted(idx_list)), sizes, iters, discrete) for
+              idx_list, sizes, iters, discrete in eq_classes.values()]
+
+    return result
