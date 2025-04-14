@@ -1,5 +1,5 @@
 from graph import *
-from basicpermutationgroup import Orbit, Stabilizer, Reduce
+from basicpermutationgroup import Orbit, Stabilizer, Reduce, FindNonTrivialOrbit
 from permv2 import *
 from colorref import *
 
@@ -16,8 +16,8 @@ def main(path: str, include_generators: bool = False):
             # else:
             #     graphs_refined = colorrefPreColored([G])
 
-            # aut_count = calculateAut(G)
-            aut_count = "aut broken"
+            aut_count = calculateAut(G)
+            #aut_count = "aut broken"
             if include_generators:
                 generators = update_generating_set(G, [], [])
                 return aut_count, generators
@@ -67,10 +67,23 @@ def calculateAut(graph: Graph):
     global X
     X = set()
     update_generating_set(graphs[0], [], [])
+    print("Final generators:", [str(p) for p in X])
+    print("Total:", len(X))
+
 
     generators = list(X)
-    generators = Reduce(generators)
-    return group_order(generators)
+    gens = Reduce(generators)
+
+    # Check for trivial automorphism after reduction
+    if len(gens) == 0 or (len(gens) == 1 and gens[0].istrivial()):
+        print("Warning: Only trivial automorphism")
+
+    print("Final generators 2:", [str(g) for g in gens])
+
+    order = group_order(gens)
+    print("Automorphism group order:", order)
+    return order
+
 
 
 # sets the colour of all vertices to it's base value
@@ -81,7 +94,7 @@ def setBase(graph: Graph):
 
 
 # brancher function, does the branching for the calls count isomorphisms for all vectors of a certain color
-@profile
+#@profile
 def brancher(graphs, checkIsomorphism, colorsDict=None):
     if len(graphs) == 1:
         graphs.append(graphCopy(graphs[0]))
@@ -131,7 +144,7 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
 
 # countIsomorphism function, stops if it's unbalanced or bijection and increase by one if it's an isomorphism.
 # If not it calls brancher to look deeper
-@profile
+#@profile
 def countIsomorphism(graphG, graphH, checkIsomorphism, colors):
     if USE_FAST_ALGORITHM:
         val, coloredGraphs = colorrefPreColoredFast([graphG, graphH], colors)
@@ -147,6 +160,19 @@ def countIsomorphism(graphG, graphH, checkIsomorphism, colors):
     colorsDict = calculateColorDict(coloredGraphs)
     graphGcolors = sorted([v.label for v in graphG.vertices])
     # balanced or not
+
+    print(f"G labels: {[v.label for v in graphG.vertices]}")
+    print(f"H labels: {[v.label for v in graphH.vertices]}")
+
+    # Adjacency check (lightweight)
+    print("G adjacency:")
+    for v in graphG.vertices:
+        print(f"{v.identifier}: {[n.identifier for n in v.neighbours]}")
+    print("H adjacency:")
+    for v in graphH.vertices:
+        print(f"{v.identifier}: {[n.identifier for n in v.neighbours]}")
+
+
     if graphGcolors != sorted([v.label for v in graphH.vertices]):
         return 0
     # bijection or not
@@ -157,7 +183,7 @@ def countIsomorphism(graphG, graphH, checkIsomorphism, colors):
 
 
 # create a dictionary with the colors as keys and the vectors with that color as values
-@profile
+#@profile
 def calculateColorDict(coloredGraphs):
     colorsDict = defaultdict(list)
     for graph in coloredGraphs:
@@ -167,7 +193,7 @@ def calculateColorDict(coloredGraphs):
 
 
 # Given equivalence classes, check if they are isomorphic and return isomorphic classes as a list of lists
-@profile
+#@profile
 def checkIsomorphism(graphs: [Graph]):
     # if there are only two graphs, check if they are isomorphic
     if len(graphs) == 2:
@@ -216,7 +242,7 @@ def checkIsomorphism(graphs: [Graph]):
 
 
 # make a copy of a graph
-@profile
+#@profile
 def graphCopy(graph: Graph):
     newGraph = Graph(False, 0)
     newGraph.identifier = graph.identifier
@@ -233,56 +259,76 @@ def graphCopy(graph: Graph):
 
 X = set()
 
-
-def update_generating_set(G, D, I):
+def update_generating_set(G, D, I, depth=0, seen=None):
     global X
+    MAX_DEPTH = 8
+    if depth > MAX_DEPTH:
+        return
+
+    if seen is None:
+        seen = set()
 
     mapping = build_full_mapping(len(G.vertices), D, I)
-    print(f"Generated mapping: {mapping}")
     if mapping is None:
+        return
+
+
+    mapping_tuple = tuple(mapping)
+    if mapping_tuple in seen:
+        return
+    seen.add(mapping_tuple)
+
+
+    if len(set(mapping)) != len(mapping):
+        print("Invalid permutation — skipping")
         return
 
     try:
         perm = permutation(len(G.vertices), mapping=mapping)
-    except AssertionError:
+        if not hasattr(G, "generators"):
+            G.generators = set()
+        if perm not in G.generators:
+            print(f"Confirmed automorphism: {perm}")
+            G.generators.add(perm)
+    except Exception as e:
+        print(f" Error: {e}")
         return
 
-    if perm in X:
-        return
-
-    G_colored = graphCopy(G)
+    G_permuted = graphCopy(G)
 
     if USE_FAST_ALGORITHM:
-        _, G_refined = colorrefPreColoredFast([G_colored])[0]
+        _, refined_list = colorrefPreColoredFast([G_permuted])
+        G_permuted = refined_list[0]
     else:
-        G_refined = colorrefPreColored([G_colored])[0]
+        G_permuted = colorrefPreColored([G_permuted])[0]
 
-    print(f"Refined labels after coloring: {[v.label for v in G_refined.vertices]}")
+    is_auto = countIsomorphism(G, G_permuted, 1, max(v.label for v in G.vertices) + 1)
 
-    if sorted(v.label for v in G_refined.vertices) != sorted(v.label for v in G.vertices):
-        return
-
-    unique_labels = len(set(v.label for v in G_refined.vertices))
-    total_vertices = len(G_refined.vertices)
-    print(f"Unique labels: {unique_labels}, Total vertices: {total_vertices}")
-
-    if unique_labels == total_vertices:
-        print(f"Found discrete graph with labels: {[v.label for v in G_refined.vertices]}")
-        if countIsomorphism(G, G_colored, 1):
+    if is_auto:
+        if perm not in X:
+            print(f"Confirmed automorphism: {perm}")
             X.add(perm)
-        return
+        else:
+            print(f" Duplicate automorphism: {perm}")
+    else:
+        print(f" Not an automorphism: {perm}")
 
-    color_dict = calculateColorDict([G_refined])
-    C = next((v_list for v_list in color_dict.values() if len(v_list) >= 2), None)
-    if not C:
-        return
 
-    for i, x in enumerate(C):
-        for j, y in enumerate(C):
-            if j <= i:
-                continue
-            print(f"Exploring pair ({x.identifier}, {y.identifier})")
-            update_generating_set(G, D + [x.identifier], I + [y.identifier])
+    color_dict = calculateColorDict([G_permuted])
+
+    for color, verts in color_dict.items():
+        if len(verts) < 2:
+            continue
+        for i in range(len(verts)):
+            for j in range(i + 1, len(verts)):
+                d = verts[i].identifier
+                i_ = verts[j].identifier
+
+                if d in D or i_ in I:
+                    continue
+
+                update_generating_set(G, D + [d], I + [i_], depth + 1, seen)
+                update_generating_set(G, D + [i_], I + [d], depth + 1, seen)
 
 
 def group_order(generators):
@@ -299,16 +345,32 @@ def group_order(generators):
 
 
 def build_full_mapping(n, D, I):
-    mapping = list(range(n))
+    if len(D) != len(I):
+        return None
+
+    mapping = [-1] * n
     used_targets = set()
 
     for d, i in zip(D, I):
-        if i in used_targets:
+        if mapping[d] != -1 or i in used_targets:
             return None
         mapping[d] = i
         used_targets.add(i)
 
+    remaining_targets = [i for i in range(n) if i not in used_targets]
+    unmapped_positions = [i for i, m in enumerate(mapping) if m == -1]
+
+    if len(unmapped_positions) != len(remaining_targets):
+        return None
+
+    for i, pos in enumerate(unmapped_positions):
+        mapping[pos] = remaining_targets[i]
+
+    if len(set(mapping)) != n:
+        return None
+
     return mapping
+
 
 
 #@profile
@@ -335,9 +397,10 @@ def run_all(directory: str):
     print(file_num)
 
 
+
 if __name__ == "__main__":
     startTime = time.time()
-    print(main("Graphs/SampleGraphSetBranching/cubes7.grl"))
+    print(main("Graphs/TestGraphs/basicAut1.gr"))
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")

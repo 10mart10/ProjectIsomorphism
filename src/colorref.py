@@ -3,7 +3,7 @@ import os
 from collections import defaultdict, deque
 import time
 import sys
-from line_profiler_pycharm import profile
+#from line_profiler_pycharm import profile
 
 
 #@profile
@@ -163,7 +163,7 @@ def colorrefPreColored(graphs):
             break
     return graphs
 
-@profile()
+#@profile()
 def colorrefPreColoredFast(graphs, color=None):
     freq_map = defaultdict(set)
 
@@ -206,7 +206,7 @@ def colorrefPreColoredFast(graphs, color=None):
     return 2, graphs
 
 
-@profile()
+#@profile()
 def refine(G, freq_map, color=None):
     if color is None:
         queue = deque(freq_map.keys())
@@ -259,7 +259,7 @@ def refine(G, freq_map, color=None):
     return freq_map, iteration_count
 
 
-@profile
+#@profile
 def fast_colorref(path):
     with open(path, 'r') as f:
         data = load_graph(f, read_list=True)
