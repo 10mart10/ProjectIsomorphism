@@ -176,19 +176,30 @@ class permutation():
 				return False
 		return True
 		
-	def __eq__(self,other):
-		"""
-		Returns <True> iff permutation <self> equals permutation <other>, in the sense
-		that they represent the same mapping.
-		(May be different objects in memory.)
-		Usage: Type P==Q.
-		"""
-		if not hasattr(other,'P'):
-			return False
-		for i in range(self.n):
-			if self.P[i]!=other.P[i]:
-				return False
-		return True
+	# def __eq__(self,other):
+	# 	"""
+	# 	Returns <True> iff permutation <self> equals permutation <other>, in the sense
+	# 	that they represent the same mapping.
+	# 	(May be different objects in memory.)
+	# 	Usage: Type P==Q.
+	# 	"""
+	# 	if not hasattr(other,'P'):
+	# 		return False
+	# 	for i in range(self.n):
+	# 		if self.P[i]!=other.P[i]:
+	# 			return False
+	# 	return True
 
-	def __hash__(self):
-		return hash(tuple(self.P))
+def __eq__(self, other):
+	"""
+    Returns True iff the permutation mappings are identical.
+    """
+	if not isinstance(other, permutation):
+		return False
+	return self.P == other.P
+
+def __hash__(self):
+	return hash(tuple(self.P))
+
+
+

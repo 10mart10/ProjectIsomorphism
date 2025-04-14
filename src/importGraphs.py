@@ -2,6 +2,8 @@ from graph import *
 from basicpermutationgroup import Orbit, Stabilizer, Reduce, FindNonTrivialOrbit
 from permv2 import *
 from colorref import *
+from math import factorial
+
 
 USE_FAST_ALGORITHM = True
 
@@ -56,34 +58,25 @@ def main(path: str, include_generators: bool = False):
         return adIdentifier
 
 
-# calculates the amount of automorphisms for a graph
 def calculateAut(graph: Graph):
     setBase(graph)
-    if USE_FAST_ALGORITHM:
-        graphs = colorrefPreColoredFast([graph])
-    else:
-        graphs = colorrefPreColored([graph])
+    graphs = colorrefPreColoredFast([graph]) if USE_FAST_ALGORITHM else colorrefPreColored([graph])
 
     global X
     X = set()
+
     update_generating_set(graphs[0], [], [])
-    print("Final generators:", [str(p) for p in X])
-    print("Total:", len(X))
+    print("Raw generators:", len(X))
 
-
-    generators = list(X)
-    gens = Reduce(generators)
-
-    # Check for trivial automorphism after reduction
-    if len(gens) == 0 or (len(gens) == 1 and gens[0].istrivial()):
-        print("Warning: Only trivial automorphism")
-
-    print("Final generators 2:", [str(g) for g in gens])
+    raw_gens = [g for g in X if not g.istrivial()]
+    gens = Reduce(raw_gens)
+    print("Reduced generators:", len(gens))
+    for g in gens:
+        print("  -", g)
 
     order = group_order(gens)
-    print("Automorphism group order:", order)
+    print("Automorphism:", order)
     return order
-
 
 
 # sets the colour of all vertices to it's base value
@@ -242,87 +235,97 @@ X = set()
 
 def update_generating_set(G, D, I, depth=0, seen=None):
     global X
-    MAX_DEPTH = 8
-    if depth > MAX_DEPTH:
-        return
 
     if seen is None:
         seen = set()
 
+    key = (tuple(sorted(D)), tuple(sorted(I)))
+    if key in seen:
+        return
+    seen.add(key)
+
     mapping = build_full_mapping(len(G.vertices), D, I)
     if mapping is None:
         return
-
 
     mapping_tuple = tuple(mapping)
     if mapping_tuple in seen:
         return
     seen.add(mapping_tuple)
 
-
-    if len(set(mapping)) != len(mapping):
-        print("Invalid permutation — skipping")
-        return
-
-    try:
-        perm = permutation(len(G.vertices), mapping=mapping)
-        if not hasattr(G, "generators"):
-            G.generators = set()
-        if perm not in G.generators:
-            print(f"Confirmed automorphism: {perm}")
-            G.generators.add(perm)
-    except Exception as e:
-        print(f" Error: {e}")
-        return
-
-    G_permuted = graphCopy(G)
+    G_p = graphCopy(G)
 
     if USE_FAST_ALGORITHM:
-        refined_list = colorrefPreColoredFast([G_permuted])
+        refined_list = colorrefPreColoredFast([G_p])
         G_permuted = refined_list[0]
     else:
-        G_permuted = colorrefPreColored([G_permuted])[0]
+        G_permuted = colorrefPreColored([G_p])[0]
 
+    perm = permutation(len(G.vertices), mapping=mapping)
     is_auto = countIsomorphism(G, G_permuted, 1, max(v.label for v in G.vertices) + 1)
 
     if is_auto:
         if perm not in X:
             print(f"Confirmed automorphism: {perm}")
             X.add(perm)
-        else:
-            print(f" Duplicate automorphism: {perm}")
-    else:
-        print(f" Not an automorphism: {perm}")
 
 
     color_dict = calculateColorDict([G_permuted])
+
+    MAX = 1
+    branch_count = 0
+    seen_pairs = set()
 
     for color, verts in color_dict.items():
         if len(verts) < 2:
             continue
         for i in range(len(verts)):
             for j in range(i + 1, len(verts)):
+                if branch_count >= MAX:
+                    return
+
                 d = verts[i].identifier
                 i_ = verts[j].identifier
+
+                pair_key = tuple(sorted([d, i_]))
+                if pair_key in seen_pairs:
+                    continue
+                seen_pairs.add(pair_key)
 
                 if d in D or i_ in I:
                     continue
 
                 update_generating_set(G, D + [d], I + [i_], depth + 1, seen)
                 update_generating_set(G, D + [i_], I + [d], depth + 1, seen)
+                branch_count += 1
 
 
-def group_order(generators):
+def group_order(generators, used_base=None, depth=0):
     if not generators:
         return 1
 
+    if used_base is None:
+        used_base = set()
+
     el = FindNonTrivialOrbit(generators)
+    while el is not None and el in used_base:
+        generators = [g for g in generators if g[el] != el]
+        el = FindNonTrivialOrbit(generators)
+
     if el is None:
         return 1
 
+    used_base.add(el)
     orbit = Orbit(generators, el)
     stab_generators = Stabilizer(generators, el)
-    return len(orbit) * group_order(stab_generators)
+
+    print(f"Element: {el}, Orbit: {len(orbit)}")
+    print(f"Stabilizer : {len(stab_generators)}")
+
+    result = len(orbit) * group_order(stab_generators, used_base, depth + 1)
+    print(f"Returning group order: {result}")
+    return result
+
 
 
 def build_full_mapping(n, D, I):
@@ -330,22 +333,22 @@ def build_full_mapping(n, D, I):
         return None
 
     mapping = [-1] * n
-    used_targets = set()
+    used = set()
 
     for d, i in zip(D, I):
-        if mapping[d] != -1 or i in used_targets:
+        if mapping[d] != -1 or i in used:
             return None
         mapping[d] = i
-        used_targets.add(i)
+        used.add(i)
 
-    remaining_targets = [i for i in range(n) if i not in used_targets]
-    unmapped_positions = [i for i, m in enumerate(mapping) if m == -1]
+    remaining = [i for i in range(n) if i not in used]
+    unmapped = [i for i, m in enumerate(mapping) if m == -1]
 
-    if len(unmapped_positions) != len(remaining_targets):
+    if len(unmapped) != len(remaining):
         return None
 
-    for i, pos in enumerate(unmapped_positions):
-        mapping[pos] = remaining_targets[i]
+    for i, pos in enumerate(unmapped):
+        mapping[pos] = remaining[i]
 
     if len(set(mapping)) != n:
         return None
@@ -381,10 +384,13 @@ def run_all(directory: str):
 
 if __name__ == "__main__":
     startTime = time.time()
-    print(main("Graphs/TestGraphs/basicAut1.gr"))
+    result = main("Graphs/TestGraphs/basicAut1.gr")
+    print(result)
     endTime = time.time()
     totalTime = endTime - startTime
     print(f"Time was {totalTime} seconds")
 
-    #directory_path = "Graphs/LastYearCompetition"
+
+
+    #directory_path = "Graphs/LastYearTests"
     #run_all(directory_path)
