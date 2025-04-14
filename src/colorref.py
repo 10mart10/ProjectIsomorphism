@@ -164,7 +164,7 @@ def colorrefPreColored(graphs):
     return graphs
 
 
-def colorrefPreColoredFast(graphs):
+def colorrefPreColoredFast(graphs, color=None):
     freq_map = defaultdict(set)
 
     for G in graphs:
@@ -172,23 +172,26 @@ def colorrefPreColoredFast(graphs):
             v.connections = 0
             freq_map[v.label].add(v)
 
-    refine(None, freq_map)
+    refine(None, freq_map, color)
 
     return graphs
 
 
-def refine(G, freq_map):
-    queue = deque(freq_map.keys())
+def refine(G, freq_map, color=None):
+    if color is not None:
+        queue = deque([color])
+    else:
+        queue = deque(freq_map.keys())
     iteration_count = 0
     color_id = max(freq_map.keys()) + 1
 
     while queue:
         color = queue.popleft()
-        affected = defaultdict(list)
+        affected = defaultdict(set)
 
         for v in freq_map[color]:
             for n in v.neighbours:
-                affected[n.label].append(n)
+                affected[n.label].add(n)
                 n.connections += 1
 
         to_split = []

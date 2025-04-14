@@ -98,10 +98,11 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
         if len(vectors) >= 4:
             colorClass = color
             break
+    newColor = max(colorsDict.keys()) + 1
     # set a random vector with color colorClass of graphG to the new color
     for vector in colorsDict[colorClass]:
         if vector in graphs[0].vertices:
-            vector.label = len(colorsDict)
+            vector.label = newColor
             break
     # Save the basic color of graphG
     colors.append([v.label for v in graphs[0].vertices])
@@ -109,9 +110,9 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
     # set all vectors with color colorClass of graphH to the new color and count the isomorphisms
     for vector in colorsDict[colorClass]:
         if not vector in graphs[0].vertices:
-            graphs[1].vertices[vector.identifier].label = len(colorsDict)
+            graphs[1].vertices[vector.identifier].label = newColor
             # call countIsomorphism for the new colors
-            counter += countIsomorphism(graphs[0], graphs[1], checkIsomorphism)
+            counter += countIsomorphism(graphs[0], graphs[1], checkIsomorphism, newColor)
             for vertice in range(len(graphs[1].vertices)):
                 graphs[1].vertices[vertice].label = colors[1][vertice]
             # if you're looking for isomorphisms and you find one, return True
@@ -130,9 +131,9 @@ def brancher(graphs, checkIsomorphism, colorsDict=None):
 # countIsomorphism function, stops if it's unbalanced or bijection and increase by one if it's an isomorphism.
 # If not it calls brancher to look deeper
 #@profile
-def countIsomorphism(graphG, graphH, checkIsomorphism):
+def countIsomorphism(graphG, graphH, checkIsomorphism, color=None):
     if USE_FAST_ALGORITHM:
-        coloredGraphs = colorrefPreColoredFast([graphG, graphH])
+        coloredGraphs = colorrefPreColoredFast([graphG, graphH], color)
     else:
         coloredGraphs = colorrefPreColored([graphG, graphH])
 
@@ -229,7 +230,7 @@ def update_generating_set(G, D, I):
     global X
 
     mapping = build_full_mapping(len(G.vertices), D, I)
-    print(f"Generated mapping: {mapping}")
+    # print(f"Generated mapping: {mapping}")
     if mapping is None:
         return
 
@@ -248,14 +249,14 @@ def update_generating_set(G, D, I):
     else:
         G_refined = colorrefPreColored([G_colored])[0]
 
-    print(f"Refined labels after coloring: {[v.label for v in G_refined.vertices]}")
+    # print(f"Refined labels after coloring: {[v.label for v in G_refined.vertices]}")
 
     if sorted(v.label for v in G_refined.vertices) != sorted(v.label for v in G.vertices):
         return
 
     unique_labels = len(set(v.label for v in G_refined.vertices))
     total_vertices = len(G_refined.vertices)
-    print(f"Unique labels: {unique_labels}, Total vertices: {total_vertices}")
+    # print(f"Unique labels: {unique_labels}, Total vertices: {total_vertices}")
 
     if unique_labels == total_vertices:
         print(f"Found discrete graph with labels: {[v.label for v in G_refined.vertices]}")
@@ -272,7 +273,7 @@ def update_generating_set(G, D, I):
         for j, y in enumerate(C):
             if j <= i:
                 continue
-            print(f"Exploring pair ({x.identifier}, {y.identifier})")
+            # print(f"Exploring pair ({x.identifier}, {y.identifier})")
             update_generating_set(G, D + [x.identifier], I + [y.identifier])
 
 
@@ -333,5 +334,5 @@ if __name__ == "__main__":
     # totalTime = endTime - startTime
     # print(f"Time was {totalTime} seconds")
 
-    directory_path = "Graphs/LastYearTests"
+    directory_path = "Graphs/TestGraphs"
     run_all(directory_path)
