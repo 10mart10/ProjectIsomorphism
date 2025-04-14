@@ -217,18 +217,18 @@ def refine(G, freq_map, color=None):
 
     while queue:
         color = queue.popleft()
-        affected = defaultdict(set)
+        affected = defaultdict(list)
 
         for v in freq_map[color]:
             for n in v.neighbours:
-                affected[n.label].add(n)
+                affected[n.label].append(n)
                 n.connections += 1
 
         to_split = []
         for c, vertices in affected.items():
-            buckets = defaultdict(set)
+            buckets = defaultdict(list)
             for v in freq_map[c]:
-                buckets[v.connections].add(v)
+                buckets[v.connections].append(v)
                 v.connections = 0
             if len(buckets) > 1:
                 to_split.append((c, buckets))
@@ -236,7 +236,6 @@ def refine(G, freq_map, color=None):
         for c, buckets in to_split:
             del freq_map[c]
             bucket_keys = sorted(buckets.keys(), key=lambda k: (-len(buckets[k]), k))
-
 
             used_color = False
 
