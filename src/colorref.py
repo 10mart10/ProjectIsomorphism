@@ -163,7 +163,7 @@ def colorrefPreColored(graphs):
             break
     return graphs
 
-@profile()
+@profile
 def colorrefPreColoredFast(graphs, color=None):
     freq_map = defaultdict(set)
 
@@ -206,7 +206,7 @@ def colorrefPreColoredFast(graphs, color=None):
     return 2, graphs
 
 
-@profile()
+@profile
 def refine(G, freq_map, color=None):
     if color is None:
         queue = deque(freq_map.keys())

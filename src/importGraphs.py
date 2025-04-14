@@ -3,7 +3,7 @@ from basicpermutationgroup import Orbit, Stabilizer, Reduce
 from permv2 import *
 from colorref import *
 
-USE_FAST_ALGORITHM = True
+USE_FAST_ALGORITHM = False
 
 
 def main(path: str, include_generators: bool = False):
@@ -11,13 +11,12 @@ def main(path: str, include_generators: bool = False):
         with open(path) as f:
             G = load_graph(f)
             G.identifier = 0
-            # if USE_FAST_ALGORITHM:
-            #     graphs_refined = colorrefPreColoredFast([G])
-            # else:
-            #     graphs_refined = colorrefPreColored([G])
+            if USE_FAST_ALGORITHM:
+                graphs_refined = colorrefPreColoredFast([G])
+            else:
+                graphs_refined = colorrefPreColored([G])
 
-            # aut_count = calculateAut(G)
-            aut_count = "aut broken"
+            aut_count = calculateAut(G)
             if include_generators:
                 generators = update_generating_set(G, [], [])
                 return aut_count, generators
@@ -36,19 +35,19 @@ def main(path: str, include_generators: bool = False):
             else:
                 results += checkIsomorphism(graphs[0])
 
-        # if "Aut" in path:
-        #     autResults = []
-        #     for result in results:
-        #         aut_count = calculateAut(result[0])
-        #         if include_generators:
-        #             generators = update_generating_set(result[0], [], [])
-        #             autResults.append((sorted([graph.identifier for graph in result]),
-        #                                aut_count,
-        #                                generators))
-        #         else:
-        #             autResults.append((sorted([graph.identifier for graph in result]),
-        #                                aut_count))
-        #     return autResults
+        if "Aut" in path:
+            autResults = []
+            for result in results:
+                aut_count = calculateAut(result[0])
+                if include_generators:
+                    generators = update_generating_set(result[0], [], [])
+                    autResults.append((sorted([graph.identifier for graph in result]),
+                                       aut_count,
+                                       generators))
+                else:
+                    autResults.append((sorted([graph.identifier for graph in result]),
+                                       aut_count))
+            return autResults
 
         adIdentifier = []
         for result in results:
@@ -189,7 +188,7 @@ def checkIsomorphism(graphs: [Graph]):
             if graph1 == graph2:
                 continue
             # check if the graphs are isomorphic
-            if brancher([graph1, graph2], 1):
+            if brancher([graphCopy(graph1), graphCopy(graph2)], 1):
                 # if they are, add them to the correct isomorphism dictionary and add all already known isomorphisms as well
                 correctIsomorphism[graph1.identifier].add(graph2)
                 correctIsomorphism[graph2.identifier].add(graph1)
@@ -336,17 +335,11 @@ def run_all(directory: str):
 
 
 if __name__ == "__main__":
-    startTime = time.time()
-    print(main("Graphs/SampleGraphSetBranching/cubes7.grl"))
-    endTime = time.time()
-    totalTime = endTime - startTime
-    print(f"Time was {totalTime} seconds")
+    # startTime = time.time()
+    # print(main("Graphs/SampleGraphSetBranching/cubes7.grl"))
+    # endTime = time.time()
+    # totalTime = endTime - startTime
+    # print(f"Time was {totalTime} seconds")
 
-    # directory_path = "Graphs/TestGraphs"
-    # run_all(directory_path)
-
-    startTime = time.time()
-    print(main("Graphs/TestGraphs/basicGIAut1.grl"))
-    endTime = time.time()
-    totalTime = endTime - startTime
-    print(f"Time was {totalTime} seconds")
+    directory_path = "Graphs/TestGraphs"
+    run_all(directory_path)
