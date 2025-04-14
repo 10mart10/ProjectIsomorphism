@@ -328,11 +328,11 @@ def run_all(directory: str):
 
 
 if __name__ == "__main__":
-    # startTime = time.time()
-    # print(main("Graphs/TestGraphs/basicAut1.gr"))
-    # endTime = time.time()
-    # totalTime = endTime - startTime
-    # print(f"Time was {totalTime} seconds")
+    startTime = time.time()
+    print(main("Graphs/LastYearCompetition/NH209_bonus01GI.grl"))
+    endTime = time.time()
+    totalTime = endTime - startTime
+    print(f"Time was {totalTime} seconds")
 
-    directory_path = "Graphs/TestGraphs"
-    run_all(directory_path)
+    # directory_path = "Graphs/LastYearCompetition/"
+    # run_all(directory_path)
