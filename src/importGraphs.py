@@ -8,25 +8,13 @@ USE_FAST_ALGORITHM = True
 
 def main(path: str, include_generators: bool = False):
     if "grl" not in path:
+        # opens singular graph and calculate the amount of automorphisms
         with open(path) as f:
             G = load_graph(f)
-            if USE_FAST_ALGORITHM:
-                graphs_refined = colorrefPreColoredFast([G])
-            else:
-                graphs_refined = colorrefPreColored([G])
-
-            aut_count = calculateAut(graphs_refined[0])
-
-            if include_generators:
-                generators = update_generating_set(G, [], [])
-                return aut_count, generators
-            else:
-                return aut_count
+            return calculateAut(G)
     else:
-        if USE_FAST_ALGORITHM:
-            refinedGraphs = fast_colorref(path)
-        else:
-            refinedGraphs = basic_colorref(path)
+        # get basic color refinement results
+        refinedGraphs = fast_colorref(path)
 
         results = []
         for graphs in refinedGraphs:
@@ -34,26 +22,17 @@ def main(path: str, include_generators: bool = False):
                 results.append(graphs[0])
             else:
                 results += checkIsomorphism(graphs[0])
-
         if "Aut" in path:
+        # if the file is an Aut file, calculate the automorphisms
             autResults = []
             for result in results:
-                aut_count = calculateAut(result[0])
-                if include_generators:
-                    generators = update_generating_set(result[0], [], [])
-                    autResults.append((sorted([graph.identifier for graph in result]),
-                                       aut_count,
-                                       generators))
-                else:
-                    autResults.append((sorted([graph.identifier for graph in result]),
-                                       aut_count))
+                autResults.append((sorted([graph.identifier for graph in result]),
+                                   calculateAut(result[0])))
             return autResults
-
         adIdentifier = []
         for result in results:
             adIdentifier.append(sorted([graph.identifier for graph in result]))
         return adIdentifier
-
 
 # calculates the amount of automorphisms for a graph
 def calculateAut(graph: Graph):
@@ -62,14 +41,10 @@ def calculateAut(graph: Graph):
         graphs = colorrefPreColoredFast([graph])
     else:
         graphs = colorrefPreColored([graph])
-
-    global X
-    X = set()
-    update_generating_set(graphs[0], [], [])
-
-    generators = list(X)
-    generators = Reduce(generators)
-    return group_order(generators)
+    # if the graph is discrete return 1
+    if len(set([v.label for v in graphs[0].vertices])) == len(graphs[0].vertices):
+        return 1
+    return brancher(graphs, 0)
 
 
 # sets the colour of all vertices to it's base value

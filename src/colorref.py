@@ -276,7 +276,7 @@ def fast_colorref(path):
 
     printResult = [(sorted(idx_list), sizes, iters, discrete) for idx_list, sizes, iters, discrete in
                    eq_classes.values()]
-    print(printResult)
+    # print(printResult)
 
     result = [(list(graphs[i] for i in sorted(idx_list)), sizes, iters, discrete) for
               idx_list, sizes, iters, discrete in eq_classes.values()]
